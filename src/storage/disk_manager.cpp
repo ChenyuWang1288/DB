@@ -77,6 +77,7 @@ page_id_t DiskManager::AllocatePage() {
     allocate_id = page_offset + BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() * free_extent_id;
     (meta_page->extent_used_page_[free_extent_id])++;
     (meta_page->num_allocated_pages_)++;
+    /*write back the bitmap*/
     WritePhysicalPage(MapPageId(free_extent_id * page->GetMaxSupportedSize()) - 1, reinterpret_cast<char *>(page));
     return allocate_id;
   }
@@ -89,13 +90,15 @@ void DiskManager::DeAllocatePage(page_id_t logical_page_id) {
   DiskFileMetaPage *meta_page = reinterpret_cast<DiskFileMetaPage *>(GetMetaData());
   static BitmapPage<PAGE_SIZE> *bitmapPage;
    static char bitmap[PAGE_SIZE];
-  ReadPhysicalPage(MapPageId(extents_id * BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() - 1),
+  ReadPhysicalPage(MapPageId(extents_id * BitmapPage<PAGE_SIZE>::GetMaxSupportedSize()) - 1,
       bitmap);
    bitmapPage = reinterpret_cast<BitmapPage<PAGE_SIZE> *>(bitmap);
     bitmapPage->DeAllocatePage(page_id);
     
     meta_page->extent_used_page_[extents_id]--;
     meta_page->num_allocated_pages_--;
+    WritePhysicalPage(MapPageId(extents_id * BitmapPage<PAGE_SIZE>::GetMaxSupportedSize()) - 1,
+                      bitmap);
 }
 
 bool DiskManager::IsPageFree(page_id_t logical_page_id) {
@@ -104,7 +107,7 @@ bool DiskManager::IsPageFree(page_id_t logical_page_id) {
   int page_id = logical_page_id % BitmapPage<PAGE_SIZE>::GetMaxSupportedSize();
   static BitmapPage<PAGE_SIZE> *bitmapPage;
   static char bitmap[PAGE_SIZE];
-  ReadPhysicalPage(MapPageId(extents_id * BitmapPage<PAGE_SIZE>::GetMaxSupportedSize() - 1), bitmap);
+  ReadPhysicalPage(MapPageId(extents_id * BitmapPage<PAGE_SIZE>::GetMaxSupportedSize()) - 1, bitmap);
   bitmapPage = reinterpret_cast<BitmapPage<PAGE_SIZE> *>(bitmap);
   return bitmapPage->IsPageFree(page_id);
 }
