@@ -1,10 +1,10 @@
 #include "buffer/buffer_pool_manager.h"
 #include "glog/logging.h"
 #include "page/bitmap_page.h"
-#include "page.h"
-#include "disk_manager.h"
-#include "replacer.h"
-#include "Iru_replacer.h"
+#include "page/page.h"
+#include "storage/disk_manager.h"
+#include "buffer/replacer.h"
+#include "buffer/lru_replacer.h"
 
 BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager)
         : pool_size_(pool_size), disk_manager_(disk_manager) {
