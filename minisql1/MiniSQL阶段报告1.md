@@ -14,7 +14,7 @@
 位图页（Bitmap page）
 
 - 占用`PAGE_SIZE`（4KB）的空间，标记一段连续页的分配情况。
-- 组成：<img src="C:\Users\17260\AppData\Roaming\Typora\typora-user-images\image-20220507164455016.png" alt="image-20220507164455016" style="zoom:33%;" />
+- 组成：<img src="Bitmap.png" alt="image-20220508154316710" style="zoom: 33%;" />
   - 元信息（Bitmap Page Meta）
     - 已经分配的页的数量（`page_allocated_`）
     - 下一个空闲的数据页(`next_free_page_`)
@@ -51,6 +51,7 @@
 - `DiskManager::MapPageId(logical_page_id)`
   - 根据一个分区的大小构造逻辑页号和物理页号的映射。
   
+
 测试：
 
 ![disk_manager_test](disk_manager_test.png)
