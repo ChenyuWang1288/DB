@@ -82,7 +82,6 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
 
 Page *BufferPoolManager::NewPage(page_id_t &page_id) {
   latch_.lock();
-  page_id_t newpage = AllocatePage();
   size_t i;
   for (i = 0; i < pool_size_; i++) 
     if (pages_[i].pin_count_ == 0) break;
@@ -115,10 +114,9 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
       free_list_.push_back(frame_id_);
     }
   }  //到这个步骤已经找到内存中即将被写入数据的位置
-
+  page_id_t newpage = AllocatePage();
   Page *R = &pages_[frame_id_];  //定义一个指针指向要被替换了的结构
   page_table_.insert(pair<page_id_t, frame_id_t> (newpage, frame_id_));  //找到了p要写入的位置：frame_id并且更新相关的位置信息。
-  R->data_[0] = '\0';
   R->page_id_ = newpage;
   R->pin_count_++;                      //修改pin值
   R->is_dirty_ = false;  //重置参数
@@ -129,7 +127,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
   // 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
   // 3.   Update P's metadata, zero out memory and add P to the page table.
   // 4.   Set the page ID output parameter. Return a pointer to P.
-  page_id = newpage;  //修改参数
+ page_id = newpage;  //修改参数
   latch_.unlock();
   return R;
 }
@@ -152,7 +150,6 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
   page_table_.erase(page_id);  //将表格中的数据删除
   p->is_dirty_ = false;
   p->pin_count_ = 0;
-  p->data_[0] = '\0';
   p->page_id_ = INVALID_PAGE_ID;//将内存中的数据模块清空
   free_list_.push_back(framei);           //将内存里的这一块内容放入到自由区中便于后续的使用
   latch_.unlock();
