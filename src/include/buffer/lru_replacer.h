@@ -37,7 +37,7 @@ public:
 
 private:
    // add your own private member variables here
-   
+ mutex latch;
    list<frame_id_t> lru_list_;
 };
 
