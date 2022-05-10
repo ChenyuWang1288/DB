@@ -76,3 +76,29 @@
 
 ## 1.5 缓冲池管理
 
+实现：
+
+Buffer pool manager 从内存中找到要求的数据页，如果数据页不在内存中，从磁盘中获取相应数据页，并根据1.4实现的LRU规则将数据页储存到内存中，必要时将内存中的脏页面写入磁盘。同时该manager需要能够实现分配新数据页和释放数据页的功能。
+
+- `BufferPoolManager::FetchPage(page_id)`
+
+  - 根据逻辑页号获取对应的数据页，判断是否在内存中，如果在，直接返回指向该数据页的指针；
+
+  - 如果不在，则需要从磁盘中寻找到数据，并且利用LRU规则从空闲表（先）和替换表中寻找写入该数据的内存位置；
+
+  - 更新相关参数
+- ` BufferPoolManager::NewPage(&page_id)`
+  
+  - 分配一个新的数据页，并将它们写入磁盘和内存
+- `BufferPoolManager::UnpinPage(page_id, is_dirty)`
+  - 取消固定固定一个数据页，将数据页放入替换表中
+- `BufferPoolManager::FlushPage(page_id)`
+  - 将数据页存储到磁盘中，内存中这一块内容清空并将它放入到空闲表中
+- `BufferPoolManager::DeletePage(page_id)`
+  - 释放一个数据页，将其从内存和磁盘中都删除
+- `BufferPoolManager::FlushAllPages()`
+  - 将所有页面都存储到磁盘中
+
+测试：
+
+![image-20220507174743517](Buffer_pool_manager_test.png)
