@@ -7,7 +7,7 @@
 
 TEST(BufferPoolManagerTest, BinaryDataTest) {
   const std::string db_name = "bpm_test.db";
-  const size_t buffer_pool_size = 10;
+  const size_t buffer_pool_size = 11;
 
   std::random_device r;
   std::default_random_engine rng(r());
@@ -23,6 +23,7 @@ TEST(BufferPoolManagerTest, BinaryDataTest) {
   // Scenario: The buffer pool is empty. We should be able to create a new page.
   ASSERT_NE(nullptr, page0);
   EXPECT_EQ(0, page_id_temp);
+  cout << buffer_pool_size << page_id_temp;
 
   char random_binary_data[PAGE_SIZE];
   // Generate random binary data
