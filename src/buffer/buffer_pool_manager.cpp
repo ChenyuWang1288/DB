@@ -55,7 +55,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
         }  //如果是脏文件则要将他写进磁盘
         t->is_dirty_ = false;
         t->pin_count_ = 0;  //重置pin位
-        free_list_.push_back(static_cast<int> frame_id_);
+        free_list_.push_back(frame_id_);
       }
     }  //到这个步骤已经找到内存中即将被写入数据的位置
     
@@ -112,7 +112,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
       }  //如果是脏文件则要将他写进磁盘
       t->is_dirty_ = false;
       t->pin_count_ = 0;  //重置pin位
-      free_list_.push_back(static_cast<int> frame_id_);
+      free_list_.push_back(frame_id_);
     }
   }  //到这个步骤已经找到内存中即将被写入数据的位置
 
