@@ -2,6 +2,8 @@
 
 ——Disk and Buffer Pool Manager
 
+> 第七小组
+
 ## 1.1 实验概述
 
 本阶段我们需要实现Disk Manager和Buffer Pool Manager模块
