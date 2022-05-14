@@ -24,14 +24,20 @@
            } while (0)
 #define MACH_WRITE_UINT32(Buf, Data) MACH_WRITE_TO(uint32_t, (Buf), (Data))
 #define MACH_WRITE_INT32(Buf, Data) MACH_WRITE_TO(int32_t, (Buf), (Data))
+#define MACH_WRITE_BOOL(Buf, Data) MACH_WRITE_TO(bool, (Buf), (Data))
+#define MACH_WRITE_CHAR(Buf, Data) MACH_WRITE_TO(char, (Buf), (Data))
 #define MACH_WRITE_STRING(Buf, Str)      \
            do {                                       \
               memcpy(Buf, Str.c_str(), Str.length()); \
            } while (0)
-
 #define MACH_READ_FROM(Type, Buf) (*reinterpret_cast<const Type *>(Buf))
 #define MACH_READ_UINT32(Buf) MACH_READ_FROM(uint32_t, (Buf))
 #define MACH_READ_INT32(Buf) MACH_READ_FROM(int32_t, (Buf))
+#define MACH_READ_STR(Str, Buf, Size)  \
+           do {                     \
+               memcpy((Str), (Buf), (Size));\
+           } while (0)
+#define MACH_READ_BOOL(Buf) MACH_READ_FROM(bool, (Buf))
 
 #define MACH_STR_SERIALIZED_SIZE(Str) (4 + Str.length())
 
