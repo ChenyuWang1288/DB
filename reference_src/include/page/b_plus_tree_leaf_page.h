@@ -29,6 +29,7 @@
 #define B_PLUS_TREE_LEAF_PAGE_TYPE BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>
 #define LEAF_PAGE_HEADER_SIZE 28
 #define LEAF_PAGE_SIZE (((PAGE_SIZE - LEAF_PAGE_HEADER_SIZE) / sizeof(MappingType)) - 1)
+//#define LEAF_PAGE_SIZE 3
 
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeLeafPage : public BPlusTreePage {
@@ -51,6 +52,8 @@ public:
   // insert and delete methods
   int Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator);
 
+
+  /*I add a int& index to store the return index*/
   bool Lookup(const KeyType &key, ValueType &value, const KeyComparator &comparator) const;
 
   int RemoveAndDeleteRecord(const KeyType &key, const KeyComparator &comparator);

@@ -7,6 +7,10 @@
 #include <string>
 #include "buffer/buffer_pool_manager.h"
 
+/*KeyType is the fields we want to search, 
+ValueType is pointer: page_id for internal node, rowid for leaf node
+*/
+
 #define MappingType std::pair<KeyType, ValueType>
 
 #define INDEX_TEMPLATE_ARGUMENTS template <typename KeyType, typename ValueType, typename KeyComparator>

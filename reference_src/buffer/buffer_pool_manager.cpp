@@ -109,7 +109,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
   /*meta data of pages*/
   pages_[replace_frame].is_dirty_ = false;
   pages_[replace_frame].page_id_ = new_page_id;
-  pages_[replace_frame].pin_count_ = 0;
+  pages_[replace_frame].pin_count_ = 1;
   /*lru_replacer to set this frame to first*/
   replacer_->Pin(replace_frame);
   /*update page_table*/
@@ -130,12 +130,13 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
     return true;
   }
   if (pages_[page->second].GetPinCount() != 0) return false;
-  /*if this page is dirty, we need to write it back to disk*/
-  if (pages_[page->second].is_dirty_) {
-    if (!FlushPage(page_id)) {
-      LOG(WARNING) << "Delete page error when flush page back in disk manager" << std::endl;
-    }
-  }
+  ///*if this page is dirty, we need to write it back to disk*/
+  //if (pages_[page->second].is_dirty_) {
+  //  if (!FlushPage(page_id)) {
+  //    LOG(WARNING) << "Delete page error when flush page back in disk manager" << std::endl;
+  //  }
+  //}
+  DeallocatePage(page->first);
   /*reset meta data*/
   pages_[page->second].is_dirty_ = false;
   pages_[page->second].page_id_ = INVALID_PAGE_ID;
