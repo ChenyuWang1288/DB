@@ -89,6 +89,7 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
       right = mid;
     }
   }
+  if (left == 0) return array_[0].second;
   return array_[left - 1].second;
 }
 

@@ -209,6 +209,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
     new_node->SetParentPageId(parent_node->GetPageId());
   } else {
     parent_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
+    new_node->SetParentPageId(parent_node->GetPageId());
     InternalPage *copy_internal = Split(parent_node);
     InsertIntoParent(parent_node, copy_internal->KeyAt(0), copy_internal);
     buffer_pool_manager_->UnpinPage(copy_internal->GetPageId(),true);
@@ -233,6 +234,15 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   /*find where the key is*/
   LeafPage *target_leaf = reinterpret_cast<LeafPage *>(FindLeafPage(key)->GetData());
   target_leaf->RemoveAndDeleteRecord(key, comparator_);
+  /*update the value in parent*/
+  if (!target_leaf->IsRootPage()) {
+    InternalPage *parent =
+        reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(target_leaf->GetParentPageId())->GetData());
+      /*if the key in parent is smaller, 
+      the smallest key in target leaf is deleted,we need to update*/
+    parent->SetKeyAt(parent->ValueIndex(target_leaf->GetPageId()), target_leaf->KeyAt(0));
+    buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+  }
   /*check if this leaf is root and if the size is less than minsize*/
   if (target_leaf->GetSize() < target_leaf->GetMinSize()) {
     CoalesceOrRedistribute(target_leaf, transaction);
@@ -339,6 +349,13 @@ bool BPLUSTREE_TYPE::Coalesce(N **neighbor_node, N **node,
   *node = nullptr;
   /*process their parent*/
   (*parent)->Remove(index);
+  /*if index==1, we need to update the parent's parent to maintain*/
+  if (!(*parent)->IsRootPage()&&index==0) {
+    InternalPage *p_parent =
+        reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage((*parent)->GetParentPageId())->GetData());
+    p_parent->SetKeyAt(p_parent->ValueIndex((*parent)->GetPageId()), (*parent)->KeyAt(0));
+    buffer_pool_manager_->UnpinPage(p_parent->GetPageId(),true);
+  }
   /*check parent*/
   if ((*parent)->GetSize() < (*parent)->GetMinSize())
     return true;
@@ -362,8 +379,21 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
   if (node->IsLeafPage()) {
     if (index == 0) {
       reinterpret_cast<LeafPage *>(neighbor_node)->MoveFirstToEndOf(reinterpret_cast<LeafPage *>(node));
+      /*because we move the first element, so we need to update the key in parent*/
+      if (!neighbor_node->IsRootPage()) {
+        InternalPage *parent = reinterpret_cast<InternalPage *>(
+            buffer_pool_manager_->FetchPage(neighbor_node->GetParentPageId())->GetData());
+        parent->SetKeyAt(parent->ValueIndex(neighbor_node->GetPageId()), neighbor_node->KeyAt(0));
+        buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+      }
     } else {
       reinterpret_cast<LeafPage *>(neighbor_node)->MoveLastToFrontOf(reinterpret_cast<LeafPage *>(node));
+      if (!node->IsRootPage()) {
+        InternalPage *parent = reinterpret_cast<InternalPage *>(
+            buffer_pool_manager_->FetchPage(node->GetParentPageId())->GetData());
+        parent->SetKeyAt(parent->ValueIndex(node->GetPageId()), node->KeyAt(0));
+        buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+      }
     }
   } else {
     
@@ -371,9 +401,22 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
     if (index == 0) {
       reinterpret_cast<InternalPage *>(neighbor_node)
           ->MoveFirstToEndOf(reinterpret_cast<InternalPage *>(node), key, buffer_pool_manager_);
+      /*the same as above to update parent*/
+      if (!neighbor_node->IsRootPage()) {
+        InternalPage *parent = reinterpret_cast<InternalPage *>(
+            buffer_pool_manager_->FetchPage(neighbor_node->GetParentPageId())->GetData());
+        parent->SetKeyAt(parent->ValueIndex(neighbor_node->GetPageId()), neighbor_node->KeyAt(0));
+        buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+      }
     } else {
       reinterpret_cast<InternalPage *>(neighbor_node)
           ->MoveLastToFrontOf(reinterpret_cast<InternalPage *>(node), key, buffer_pool_manager_);
+      if (!node->IsRootPage()) {
+        InternalPage *parent =
+            reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(node->GetParentPageId())->GetData());
+        parent->SetKeyAt(parent->ValueIndex(node->GetPageId()), node->KeyAt(0));
+        buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+      }
     }
   }
 }
