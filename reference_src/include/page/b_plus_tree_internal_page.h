@@ -7,6 +7,7 @@
 #define B_PLUS_TREE_INTERNAL_PAGE_TYPE BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>
 #define INTERNAL_PAGE_HEADER_SIZE 24
 #define INTERNAL_PAGE_SIZE ((PAGE_SIZE - INTERNAL_PAGE_HEADER_SIZE) / (sizeof(MappingType)) - 1)
+//#define INTERNAL_PAGE_SIZE 3
 /**
  * Store n indexed keys and n+1 child pointers (page_id) within internal page.
  * Pointer PAGE_ID(i) points to a subtree in which all keys K satisfy:
@@ -30,6 +31,9 @@ public:
 
   void SetKeyAt(int index, const KeyType &key);
 
+  //here I add a new function SetValueAt(int index, const ValueType& value);
+  void SetValueAt(int index, const ValueType &value);
+
   int ValueIndex(const ValueType &value) const;
 
   ValueType ValueAt(int index) const;
@@ -47,7 +51,9 @@ public:
   // Split and Merge utility methods
   void MoveAllTo(BPlusTreeInternalPage *recipient, const KeyType &middle_key, BufferPoolManager *buffer_pool_manager);
 
+  /*buffer_pool_manager here is to change those child's parent_id*/
   void MoveHalfTo(BPlusTreeInternalPage *recipient, BufferPoolManager *buffer_pool_manager);
+  //void MoveHalfTo(BPlusTreeInternalPage *recipient);
 
   void MoveFirstToEndOf(BPlusTreeInternalPage *recipient, const KeyType &middle_key,
                         BufferPoolManager *buffer_pool_manager);
