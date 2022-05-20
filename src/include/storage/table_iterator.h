@@ -7,19 +7,16 @@
 
 
 class TableHeap;
-class TablePage;
+
 class TableIterator {
 
 public:
   // you may define your own constructor based on your member variables
-  //explicit TableIterator();
-  TableIterator() = delete;
-  
-  explicit TableIterator(Row row, TablePage *table_page, TableHeap *table_heap, Transaction *txn);
+  explicit TableIterator();
 
   explicit TableIterator(const TableIterator &other);
-  /*I delete the virtual destructor */
-  //~TableIterator();
+
+  virtual ~TableIterator();
 
   inline bool operator==(const TableIterator &itr) const;
 
@@ -35,10 +32,6 @@ public:
 
 private:
   // add your own private member variables here
-  Row row_;
-  TablePage *cur_page_;
-  TableHeap *table_heap_;
-  Transaction *txn_;
 };
 
 #endif //MINISQL_TABLE_ITERATOR_H

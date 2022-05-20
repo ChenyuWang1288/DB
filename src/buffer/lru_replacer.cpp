@@ -1,65 +1,49 @@
 #include "buffer/lru_replacer.h"
-
-LRUReplacer::LRUReplacer(size_t num_pages) :max_size(num_pages){
+#include <unordered_map>
+#include <algorithm>
+using namespace std;
+LRUReplacer::LRUReplacer(size_t num_pages) {
 
 }
 
 LRUReplacer::~LRUReplacer() = default;
 
-bool LRUReplacer::Victim(frame_id_t *frame_id) { 
- if (max_size==0||lru_list.size()==0) {
-    return false; /*all the pages are pinned or there is no pages in lru_list*/
- }
- else {
-   auto it_last = prev(lru_list.end()); /*the last iterator in the list*/
-   *frame_id = *it_last;
-   lru_list.erase(it_last); /*delete the last element*/
-   auto it_map = id_map_it.find(*frame_id); 
-   id_map_it.erase(it_map);/*delete the mapping info*/
-   return true;
- }
+bool LRUReplacer::Victim(frame_id_t *frame_id) {
+  latch.lock();
+  if (Size() > 0) {
+    *frame_id = lru_list_.front();  // 返回最近最少访问的元素，即链表的第一个元素
+    lru_list_.pop_front();
+    latch.unlock();
+    return true;
+  }
+  latch.unlock();
+  return false;
 }
 
-void LRUReplacer::Pin(frame_id_t frame_id) { 
-    auto it_map = id_map_it.find(frame_id);
-  if (it_map==id_map_it.end()) {
-      return; /*if this frame is not in this list, nothing happens*/
+void LRUReplacer::Pin(frame_id_t frame_id) 
+{ 
+    latch.lock();
+  // 从lru_list_中移除数据页
+  list<frame_id_t>::iterator list_iter1 = find(lru_list_.begin(), lru_list_.end(), frame_id);
+  if (list_iter1 != lru_list_.end()) {
+	// 找到了该数据页，删除
+    lru_list_.remove(*list_iter1);
   }
-  lru_list.erase(it_map->second);
-    id_map_it.erase(it_map);
+  latch.unlock();
 }
 
 void LRUReplacer::Unpin(frame_id_t frame_id) { 
-    /*I don't know what unpin is*/ 
-    auto it_map = id_map_it.find(frame_id);
-    if (it_map == id_map_it.end())
-    {
-      /*the page is not in this list*/
-      Access(frame_id);
-    
-    } else {
-      /*the page is in this list*/
-      Access(frame_id);
-    }
+  latch.lock();
+  list<frame_id_t>::iterator list_iter1 = find(lru_list_.begin(), lru_list_.end(), frame_id);
+  if (list_iter1 == lru_list_.end()) {
+    // 没找到该数据页，此时把它加入lru_list_
+    lru_list_.push_back(frame_id);
+  }
+  latch.unlock();
 }
 
 size_t LRUReplacer::Size() {
-  return lru_list.size();
-}
-
-void LRUReplacer::Access(frame_id_t frame_id) { 
-	auto it_map = id_map_it.find(frame_id);
-	if (it_map == id_map_it.end()) {
-          lru_list.push_front(frame_id); /*if can't find this frame_id*/
-          id_map_it.insert(pair<frame_id_t, list<frame_id_t>::iterator>
-              (frame_id, lru_list.begin()));
-    } 
-    else
-    {
-      lru_list.erase(it_map->second); /*delete the element and push it to the begin() of the list*/
-      lru_list.push_front(frame_id);
-      auto it_list=lru_list.begin();
-      it_map->second = it_list; /*modify the iterator in map*/
-    }
-
+    // 即lru_list_中元素的数量
+  return lru_list_.size();
+  return 0;
 }

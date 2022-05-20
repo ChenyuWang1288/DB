@@ -101,9 +101,6 @@ private:
   std::recursive_mutex db_io_latch_;
   bool closed{false};
   char meta_data_[PAGE_SIZE];
-  //a simple buffer pool, use a bitmap, if this bitmap is not we want, update it.
-  char cur_bitmap_[PAGE_SIZE];
-  uint32_t extent_id_=0;
 };
 
 #endif

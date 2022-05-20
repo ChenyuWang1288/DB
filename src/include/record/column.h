@@ -10,11 +10,10 @@ class Column {
   friend class Schema;
 
 public:
-  /*this constructor have no length parameter, it is not char type*/
   Column(std::string column_name, TypeId type, uint32_t index, bool nullable, bool unique);
-  /*this constructor have a length parameter, it is char type*/
+
   Column(std::string column_name, TypeId type, uint32_t length, uint32_t index, bool nullable, bool unique);
-  /*other column copy*/
+
   Column(const Column *other);
 
   std::string GetName() const { return name_; }
@@ -30,9 +29,9 @@ public:
   TypeId GetType() const { return type_; }
 
   uint32_t SerializeTo(char *buf) const;
-  
+
   uint32_t GetSerializedSize() const;
-  /*deserialize is a static function*/
+
   static uint32_t DeserializeFrom(char *buf, Column *&column, MemHeap *heap);
 
 private:

@@ -22,10 +22,7 @@
  *
  */
 class Row {
-  /*this friend class is added by me*/
-  friend class TableIterator;
-
- public:
+public:
   /**
    * Row used for insert
    * Field integrity should check by upper level
@@ -103,7 +100,6 @@ private:
   RowId rid_{};
   std::vector<Field *> fields_;   /** Make sure that all fields are created by mem heap */
   MemHeap *heap_{nullptr};
-  //static constexpr uint32_t ROW_MAGIC_NUM = 200209;
 };
 
 #endif //MINISQL_TUPLE_H

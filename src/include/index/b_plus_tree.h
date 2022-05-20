@@ -30,7 +30,7 @@ class BPlusTree {
 
 public:
   explicit BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
-                    int leaf_max_size = LEAF_PAGE_SIZE, int internal_max_size = INTERNAL_PAGE_SIZE );
+                     int leaf_max_size = LEAF_PAGE_SIZE, int internal_max_size = INTERNAL_PAGE_SIZE);
 
   // Returns true if this B+ tree has no keys and values.
   bool IsEmpty() const;
@@ -51,9 +51,6 @@ public:
   INDEXITERATOR_TYPE End();
 
   // expose for test purpose
-  /*I don't know why this return type is Page, so I modify it as leaf page*/
-  //Page *FindLeafPage(const KeyType &key, bool leftMost = false);
-
   Page *FindLeafPage(const KeyType &key, bool leftMost = false);
 
   // used to check whether all pages are unpinned
@@ -84,11 +81,9 @@ private:
   template<typename N>
   N *Split(N *node);
 
-  
   template<typename N>
   bool CoalesceOrRedistribute(N *node, Transaction *transaction = nullptr);
 
-  
   template<typename N>
   bool Coalesce(N **neighbor_node, N **node, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent,
                 int index, Transaction *transaction = nullptr);

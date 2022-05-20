@@ -1,6 +1,10 @@
 #include "buffer/buffer_pool_manager.h"
 #include "glog/logging.h"
 #include "page/bitmap_page.h"
+#include "page/page.h"
+#include "storage/disk_manager.h"
+#include "buffer/replacer.h"
+#include "buffer/lru_replacer.h"
 
 BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager)
         : pool_size_(pool_size), disk_manager_(disk_manager) {
@@ -20,6 +24,52 @@ BufferPoolManager::~BufferPoolManager() {
 }
 
 Page *BufferPoolManager::FetchPage(page_id_t page_id) {
+  latch_.lock();//保护
+  auto it = page_table_.find(page_id);
+  if (it != page_table_.end()) {  //内存中如果能找到这个page直接返回就可以
+    frame_id_t framei = it->second;
+    Page *p = &pages_[framei];          //定义一个指向该结构的指针
+    p->pin_count_++;              //修改pin的值
+    replacer_->Pin(framei);             // pin一下(replacer已经被定义）
+    latch_.unlock();
+    return p;
+  } else {//如果在内存中没找到就需要在内存中寻找一个位置存放读取的page
+    frame_id_t frame_id_;//定义一个变量存位置
+    frame_id_t sframe_id;//定义一个指针进行参数传递
+    if (free_list_.size() != 0) {//如果有自由区
+      frame_id_ = free_list_.front();//获得自由区栈顶的元素（在缓冲区的位置id）
+      free_list_.pop_front();//将栈顶元素删掉，此时已经获得写入缓冲区的具体位置
+    } else {//如果自由区为空，此时需要在替换区找到需要替换的位置
+      bool n = replacer_->Victim(&sframe_id);//将参数传过去，在LRU中会将替换的id传过来
+      if (n == 0)                            //如果为0，则替换区也没有可以替换的元素了
+      {
+        latch_.unlock();
+        return nullptr;  //此时返回
+      } else {
+        frame_id_ = sframe_id;  //如果有替换的元素，则确定了最终替换的位置
+        Page *t = &pages_[frame_id_];
+        page_table_.erase(t->GetPageId());
+        bool is_dirty = t->IsDirty();  //判断他是否是脏文件
+        if (is_dirty == 1) {
+          FlushPage(t->GetPageId());
+        }  //如果是脏文件则要将他写进磁盘
+        t->is_dirty_ = false;
+        t->pin_count_ = 0;  //重置pin位
+        free_list_.push_back(frame_id_);
+      }
+    }  //到这个步骤已经找到内存中即将被写入数据的位置
+    
+    Page *R = &pages_[frame_id_];//定义一个指针指向要被替换了的结构
+    page_table_.insert( pair<page_id_t, frame_id_t> (page_id,frame_id_));  //找到了p要写入的位置：frame_id并且更新相关的位置信息，下一步就是在磁盘中找到我要的数据。
+    disk_manager_->ReadPage(page_id, R->GetData());//在磁盘中读入我要的数据
+    R->page_id_ = page_id;
+    R->is_dirty_ = false;  //重置参数
+    replacer_->Unpin(frame_id_);
+    R->pin_count_++;  //修改pin值
+    replacer_->Pin(frame_id_);
+    latch_.unlock();
+    return R;//返回结构地址
+  }
   // 1.     Search the page table for the requested page (P).
   // 1.1    If P exists, pin it and return it immediately.
   // 1.2    If P does not exist, find a replacement page (R) from either the free list or the replacer.
@@ -27,161 +77,125 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   // 2.     If R is dirty, write it back to the disk.
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
-  if (page_id == INVALID_PAGE_ID) {
-    return nullptr;
-  }
-  auto page=page_table_.find(page_id);
-  if (page!=page_table_.end()) {
-    /*page_id is in buffer pool*/
-    replacer_->Pin(page->second);//pin in replacer;
-    pages_[page->second].pin_count_++;
-    return &pages_[page->second];
-  }
-  else
-  {
-    /*p is not in buffer pool*/
-    frame_id_t replace_frame = INVALID_FRAME_ID;
-    if (free_list_.size() != 0){
-      /*there is a free frame*/
-        auto first_free = free_list_.begin();
-        replace_frame=*first_free;
-        free_list_.erase(first_free);//use the free frame in free list
-    } 
-    else {
-      /*there is no free frame, use replacer*/
-      if (replacer_->Victim(&replace_frame) == false) {
-        return nullptr;
-      }
-      else {
-        if (pages_[replace_frame].is_dirty_) {
-          FlushPage(pages_[replace_frame].page_id_);
-          //write this page to disk
-        }
-        auto pre_map = page_table_.find(pages_[replace_frame].page_id_);
-        /*delete the previous one in page_table*/
-        page_table_.erase(pre_map);
-      }
-    }
-    disk_manager_->ReadPage(page_id, pages_[replace_frame].data_);
-    replacer_->Pin(replace_frame);
-    /*meta data?*/
-    pages_[replace_frame].is_dirty_ = false;
-    pages_[replace_frame].page_id_ = page_id;
-    pages_[replace_frame].pin_count_ = 1;
-    /*update page_table_*/
-    page_table_.insert(pair<page_id_t, frame_id_t>(page_id, replace_frame));
-    return &pages_[replace_frame];
-  }
-
+  return nullptr;
 }
 
 Page *BufferPoolManager::NewPage(page_id_t &page_id) {
+  latch_.lock();
+  size_t i;
+  for (i = 0; i < pool_size_; i++) 
+    if (pages_[i].pin_count_ == 0) break;
+  if (i == pool_size_) {
+    latch_.unlock();
+    return nullptr;  //如果pin值都不为0 返回
+  }
+  //和fetch类似的操作
+  frame_id_t frame_id_;              //定义一个变量存位置
+  frame_id_t sframe_id;              //定义一个指针进行参数传递
+  if (free_list_.size() != 0) {      //如果有自由区
+    frame_id_ = free_list_.front();  //获得自由区栈顶的元素（在缓冲区的位置id）
+    free_list_.pop_front();          //将栈顶元素删掉，此时已经获得写入缓冲区的具体位置
+  } else {                           //如果自由区为空，此时需要在替换区找到需要替换的位置
+    bool n = replacer_->Victim(&sframe_id);  //将参数传过去，在LRU中会将替换的id传过来
+    if (n == 0)                              //如果为0，则替换区也没有可以替换的元素了
+    {
+      latch_.unlock();
+      return nullptr;  //此时返回
+    } else {
+      frame_id_ = sframe_id;  //如果有替换的元素，则确定了最终替换的位置
+      Page *t = &pages_[frame_id_];
+      page_table_.erase(t->GetPageId());
+      bool is_dirty = t->IsDirty();  //判断他是否是脏文件
+      if (is_dirty == 1) {
+        FlushPage(t->GetPageId());
+      }  //如果是脏文件则要将他写进磁盘
+      t->is_dirty_ = false;
+      t->pin_count_ = 0;  //重置pin位
+      free_list_.push_back(frame_id_);
+    }
+  }  //到这个步骤已经找到内存中即将被写入数据的位置
+  page_id_t newpage = AllocatePage();
+  Page *R = &pages_[frame_id_];  //定义一个指针指向要被替换了的结构
+  page_table_.insert(pair<page_id_t, frame_id_t> (newpage, frame_id_));  //找到了p要写入的位置：frame_id并且更新相关的位置信息。
+  R->page_id_ = newpage;
+  R->pin_count_++;                      //修改pin值
+  R->is_dirty_ = false;  //重置参数
+  replacer_->Pin(frame_id_);
+  disk_manager_->WritePage(R->GetPageId(),R->GetData());
   // 0.   Make sure you call AllocatePage!
   // 1.   If all the pages in the buffer pool are pinned, return nullptr.
   // 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
   // 3.   Update P's metadata, zero out memory and add P to the page table.
   // 4.   Set the page ID output parameter. Return a pointer to P.
-  page_id_t new_page_id = AllocatePage();
-  if (new_page_id == INVALID_PAGE_ID) {
-    return nullptr; /*no valid page to allocate by disk manager*/
-  }
-  frame_id_t replace_frame = INVALID_FRAME_ID;
-  if (free_list_.size()!=0) {
-    /*if there is a free page in free_list_*/
-    auto first_free = free_list_.begin();
-    replace_frame = *first_free;
-    free_list_.erase(first_free);
-  } else {
-    /*use replacer,the same like fetch*/
-    if (replacer_->Victim(&replace_frame) == false) {
-      /*if fails, DeallocatePage,*/
-      disk_manager_->DeAllocatePage(new_page_id);
-      return nullptr;
-    }
-    /*if find and this page is dirty, write back to disk*/
-    if (pages_[replace_frame].is_dirty_) FlushPage(pages_[replace_frame].page_id_);
-    auto pre_map = page_table_.find(pages_[replace_frame].page_id_);
-    /*delete the previous one in page_table*/
-    page_table_.erase(pre_map);
-  }
-  /*zero memory*/
-  pages_[replace_frame].ResetMemory();
-  /*meta data of pages*/
-  pages_[replace_frame].is_dirty_ = false;
-  pages_[replace_frame].page_id_ = new_page_id;
-  pages_[replace_frame].pin_count_ = 1;
-  /*lru_replacer to set this frame to first*/
-  replacer_->Pin(replace_frame);
-  /*update page_table*/
-  page_table_.insert(pair<page_id_t, frame_id_t>(new_page_id, replace_frame));
-  page_id = new_page_id;
-  return &pages_[replace_frame];
+ page_id = newpage;  //修改参数
+  latch_.unlock();
+  return R;
 }
 
 bool BufferPoolManager::DeletePage(page_id_t page_id) {
+  latch_.lock();
+  auto it = page_table_.find(page_id);
+  if (it == page_table_.end()) {
+    latch_.unlock();
+    return true;  //不在缓存池中
+  }
+  frame_id_t framei = it->second;
+  Page *p = &pages_[framei];
+  if (p->pin_count_ != 0) {
+    latch_.unlock();
+    return false;//pin值不为0
+  }
+  if (p->is_dirty_ == 1) FlushPage(page_id);
+  DeallocatePage(page_id);     //将这一页的数据页删除，修改位图
+  page_table_.erase(page_id);  //将表格中的数据删除
+  p->is_dirty_ = false;
+  p->pin_count_ = 0;
+  p->page_id_ = INVALID_PAGE_ID;//将内存中的数据模块清空
+  free_list_.push_back(framei);           //将内存里的这一块内容放入到自由区中便于后续的使用
+  latch_.unlock();
+  return true;
   // 0.   Make sure you call DeallocatePage!
   // 1.   Search the page table for the requested page (P).
   // 1.   If P does not exist, return true.
   // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
-  // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list
+  // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
   
-  auto page=page_table_.find(page_id);//page->second is the frame_id
-  if (page == page_table_.end()) {
-    return true;
-  }
-  if (pages_[page->second].GetPinCount() != 0) return false;
-  ///*if this page is dirty, we need to write it back to disk*/
-  //if (pages_[page->second].is_dirty_) {
-  //  if (!FlushPage(page_id)) {
-  //    LOG(WARNING) << "Delete page error when flush page back in disk manager" << std::endl;
-  //  }
-  //}
-  DeallocatePage(page->first);
-  /*reset meta data*/
-  pages_[page->second].is_dirty_ = false;
-  pages_[page->second].page_id_ = INVALID_PAGE_ID;
-  /*add it to free_list_*/
-  free_list_.emplace_back(page->second);
-  /*delete it in page_table_*/
-  page_table_.erase(page);
-  
-  return true;
 }
 
 bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
-  //1 find whether page_id is in this buffer pool, if not, return false
-  //2 find whether this page pin_count is more than 1, if it is, just set is_dirty_,and decrement pin_count
-  //3 if pin_count is 1, unpin it and add it to lrulist by replacer
-  auto page = page_table_.find(page_id);
-  if (page == page_table_.end()) return false;
-  if(--pages_[page->second].pin_count_<0) {
-    pages_[page->second].pin_count_ = 0;
-  }
-  pages_[page->second].is_dirty_ = pages_[page->second].is_dirty_ || is_dirty;
-  if (pages_[page->second].GetPinCount() ==0) {
-    replacer_->Unpin(page->second);
-  } 
+  latch_.lock();
+  auto it = page_table_.find(page_id);
+  if (it == page_table_.end()) {
+    latch_.unlock();
+    return false;
+  }//不在缓存区直接返回
+  frame_id_t framei = it->second;
+  if (is_dirty == 1) pages_[framei].is_dirty_ = true;  //如果是脏页面，修改值
+  if (pages_[framei].pin_count_ == 0) {
+    latch_.unlock();
+    return false;
+  }//pin值为0 则正在使用中 直接返回
+  if (--(pages_[framei].pin_count_) == 0) replacer_->Unpin(framei);
+  latch_.unlock();//当pin值只进行这一次操作时 进行Unpin操作，可替换了
   return true;
 }
-
+void BufferPoolManager::FlushAllPages() { 
+    for (size_t i = 0; i < pool_size_; i++) {
+    FlushPage(pages_[i].page_id_);
+    }
+}
 bool BufferPoolManager::FlushPage(page_id_t page_id) {
-  //1 if the page_id is not allocated, return false
-  //2 if the page_id is not in buffer pool return false;
-  //3 find frame_id and write
-  
-
-  /*I don't know why we don't need this check */
-  if (disk_manager_->IsPageFree(page_id)) return false;
-  auto page = page_table_.find(page_id);
-  if (page == page_table_.end()) return false;
-  disk_manager_->WritePage(page_id, pages_[page->second].GetData());
+  latch_.lock();
+  auto it = page_table_.find(page_id);
+  if (it == page_table_.end() || page_id == INVALID_PAGE_ID) {
+    latch_.unlock();
+    return false;
+  }
+  disk_manager_->WritePage(page_id, pages_[it->second].data_);
+  latch_.unlock();
   return true;
+
 }
-//bool BufferPoolManager::FlushAllPages() {
-//
-//}
-
-
 
 page_id_t BufferPoolManager::AllocatePage() {
   int next_page_id = disk_manager_->AllocatePage();
