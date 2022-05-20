@@ -27,7 +27,7 @@ bool BitmapPage<PageSize>::DeAllocatePage(uint32_t page_offset) {
     else {
       bytes[byte_num] &= deAllocate_mask[bit_num];
       page_allocated_--;
-      if (next_free_page_ == 0xffffffff) next_free_page_ = page_offset;
+      if (next_free_page_ == 0xffffffff) next_free_page_ = find_next_free_();
       return true;
   } 
 }

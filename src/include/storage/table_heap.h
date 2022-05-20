@@ -48,7 +48,7 @@ public:
    * @param[in] txn Transaction performing the update
    * @return true is update is successful.
    */
-  bool UpdateTuple(const Row &row, const RowId &rid, Transaction *txn);
+  bool UpdateTuple(Row &row, RowId &rid, Transaction *txn);
 
   /**
    * Called on Commit/Abort to actually delete a tuple or rollback an insert.
@@ -99,10 +99,10 @@ private:
   explicit TableHeap(BufferPoolManager *buffer_pool_manager, Schema *schema, Transaction *txn,
                      LogManager *log_manager, LockManager *lock_manager) :
           buffer_pool_manager_(buffer_pool_manager),
+          first_page_id_(INVALID_PAGE_ID),
           schema_(schema),
           log_manager_(log_manager),
-          lock_manager_(lock_manager) {
-    ASSERT(false, "Not implemented yet.");
+          lock_manager_(lock_manager){
   };
 
   /**

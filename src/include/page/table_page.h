@@ -17,6 +17,8 @@
  *  ----------------------------------------------------------------
  **/
 
+
+
 #include <cstring>
 #include "common/macros.h"
 #include "common/rowid.h"
@@ -25,7 +27,7 @@
 #include "transaction/lock_manager.h"
 #include "transaction/log_manager.h"
 #include "transaction/transaction.h"
-
+enum update_faults {success,invalidSlotNumber,deletedTuple,noSpace};
 class TablePage : public Page {
 public:
   void Init(page_id_t page_id, page_id_t prev_id, LogManager *log_mgr, Transaction *txn);
@@ -45,11 +47,12 @@ public:
   }
 
   bool InsertTuple(Row &row, Schema *schema, Transaction *txn, LockManager *lock_manager, LogManager *log_manager);
-
+  
+  /*if a row is deleted, the first bit of this tuple size is 1*/
   bool MarkDelete(const RowId &rid, Transaction *txn, LockManager *lock_manager, LogManager *log_manager);
 
   bool UpdateTuple(const Row &new_row, Row *old_row, Schema *schema,
-                   Transaction *txn, LockManager *lock_manager, LogManager *log_manager);
+                   Transaction *txn, LockManager *lock_manager, LogManager *log_manager,update_faults& msg);
 
   void ApplyDelete(const RowId &rid, Transaction *txn, LogManager *log_manager);
 
@@ -60,15 +63,21 @@ public:
   bool GetFirstTupleRid(RowId *first_rid);
 
   bool GetNextTupleRid(const RowId &cur_rid, RowId *next_rid);
+  /* @return the maximum free space for an empty page*/
+  static uint32_t MaxTupleSize() { 
+     return PAGE_SIZE - SIZE_TABLE_PAGE_HEADER - SIZE_TUPLE;
+  }
+  /*I make the private GetTupleCount() public*/
+  uint32_t GetTupleCount() { return *reinterpret_cast<uint32_t *>(GetData() + OFFSET_TUPLE_COUNT); }
 
-private:
+ private:
   uint32_t GetFreeSpacePointer() { return *reinterpret_cast<uint32_t *>(GetData() + OFFSET_FREE_SPACE); }
 
   void SetFreeSpacePointer(uint32_t free_space_pointer) {
     memcpy(GetData() + OFFSET_FREE_SPACE, &free_space_pointer, sizeof(uint32_t));
   }
 
-  uint32_t GetTupleCount() { return *reinterpret_cast<uint32_t *>(GetData() + OFFSET_TUPLE_COUNT); }
+  // GetTupleCount() { return *reinterpret_cast<uint32_t *>(GetData() + OFFSET_TUPLE_COUNT); }
 
   void SetTupleCount(uint32_t tuple_count) { memcpy(GetData() + OFFSET_TUPLE_COUNT, &tuple_count, sizeof(uint32_t)); }
 
@@ -93,7 +102,7 @@ private:
   }
 
   static bool IsDeleted(uint32_t tuple_size) { return static_cast<bool>(tuple_size & DELETE_MASK) || tuple_size == 0; }
-
+  
   static uint32_t SetDeletedFlag(uint32_t tuple_size) { return static_cast<uint32_t>(tuple_size | DELETE_MASK); }
 
   static uint32_t UnsetDeletedFlag(uint32_t tuple_size) { return static_cast<uint32_t>(tuple_size & (~DELETE_MASK)); }
