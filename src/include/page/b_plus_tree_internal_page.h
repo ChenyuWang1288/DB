@@ -34,6 +34,7 @@ public:
   //here I add a new function SetValueAt(int index, const ValueType& value);
   void SetValueAt(int index, const ValueType &value);
 
+
   int ValueIndex(const ValueType &value) const;
 
   ValueType ValueAt(int index) const;
