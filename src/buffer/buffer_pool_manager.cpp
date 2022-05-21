@@ -25,6 +25,9 @@ BufferPoolManager::~BufferPoolManager() {
 
 Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   latch_.lock();//保护
+  if (page_id == INVALID_PAGE_ID) {
+    return nullptr;
+  }
   auto it = page_table_.find(page_id);
   if (it != page_table_.end()) {  //内存中如果能找到这个page直接返回就可以
     frame_id_t framei = it->second;
