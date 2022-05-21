@@ -69,8 +69,8 @@ KeyType B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const {
  */
 INDEX_TEMPLATE_ARGUMENTS
 const MappingType &B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) {
-  // replace with your own code
-  return array_[0];
+  
+  return array_[index];
 }
 
 /*****************************************************************************

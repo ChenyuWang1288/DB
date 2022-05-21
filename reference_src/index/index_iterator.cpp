@@ -2,7 +2,8 @@
 #include "index/generic_key.h"
 #include "index/index_iterator.h"
 
-INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::IndexIterator() {
+INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::IndexIterator(LeafPage *target_leaf, int index,
+                                                           BufferPoolManager *buffer_pool_manager):target_leaf_(target_leaf),index_(index),buffer_pool_manager_(buffer_pool_manager) {
 
 }
 
@@ -10,22 +11,38 @@ INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::~IndexIterator() {
 
 }
 
-INDEX_TEMPLATE_ARGUMENTS const MappingType &INDEXITERATOR_TYPE::operator*() {
-  ASSERT(false, "Not implemented yet.");
+INDEX_TEMPLATE_ARGUMENTS const MappingType &INDEXITERATOR_TYPE::operator*() { 
+  return target_leaf_->GetItem(index_); 
 }
 
 INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE &INDEXITERATOR_TYPE::operator++() {
-  ASSERT(false, "Not implemented yet.");
+  if (index_ < target_leaf_->GetSize()-1){
+    index_++;
+  } else {
+    /*find the next leaf*/
+    if (target_leaf_->GetNextPageId() != INVALID_PAGE_ID) {
+      LeafPage* next_leaf = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(target_leaf_->GetNextPageId())->GetData());
+      buffer_pool_manager_->UnpinPage(target_leaf_->GetPageId(),true);
+      target_leaf_ = next_leaf;
+      index_ = 0;
+    } else {
+      /*no next leaf*/
+      buffer_pool_manager_->UnpinPage(target_leaf_->GetPageId(),true);
+      target_leaf_=nullptr;
+      index_ = 0;
+    }
+  }
+  return *this;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 bool INDEXITERATOR_TYPE::operator==(const IndexIterator &itr) const {
-  return false;
+  return (itr.target_leaf_ == target_leaf_) && (itr.index_ == index_);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-bool INDEXITERATOR_TYPE::operator!=(const IndexIterator &itr) const {
-  return false;
+bool INDEXITERATOR_TYPE::operator!=(const IndexIterator &itr) const { 
+  return !(itr == (*this)); 
 }
 
 template

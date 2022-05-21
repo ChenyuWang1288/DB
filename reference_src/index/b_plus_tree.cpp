@@ -465,8 +465,10 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() {
-  return INDEXITERATOR_TYPE();
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() { 
+  KeyType key;
+  LeafPage *target_leaf = reinterpret_cast<LeafPage *> (FindLeafPage(key, true)->GetData());
+  return INDEXITERATOR_TYPE(target_leaf, 0, buffer_pool_manager_);
 }
 
 /*
@@ -476,7 +478,12 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
-  return INDEXITERATOR_TYPE();
+  LeafPage *target_leaf = reinterpret_cast<LeafPage *> (FindLeafPage(key, false)->GetData());
+  int index = target_leaf->KeyIndex(key, comparator_);
+  if (comparator_( target_leaf->KeyAt(index) , key)!=0) {
+    return this->End();
+  } 
+  return INDEXITERATOR_TYPE(target_leaf, index, buffer_pool_manager_);
 }
 
 /*
@@ -486,7 +493,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::End() {
-  return INDEXITERATOR_TYPE();
+ return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_); 
 }
 
 /*****************************************************************************
@@ -499,18 +506,18 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::End() {
  */
 INDEX_TEMPLATE_ARGUMENTS
 Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
-  page_id_t target = root_page_id_;
-  Page *page = buffer_pool_manager_->FetchPage(root_page_id_);
-  BPlusTreePage *bptp = reinterpret_cast<BPlusTreePage *>(page->GetData());
-  while (!bptp->IsLeafPage()) {
-    InternalPage *internal_page = reinterpret_cast<InternalPage*> (bptp);
-    target = internal_page->Lookup(key, comparator_);
-    buffer_pool_manager_->UnpinPage(bptp->GetPageId(),true);
-    page = buffer_pool_manager_->FetchPage(target);
-    bptp = reinterpret_cast<BPlusTreePage *>(page->GetData());
-  }
+    page_id_t target = root_page_id_;
+    Page *page = buffer_pool_manager_->FetchPage(root_page_id_);
+    BPlusTreePage *bptp = reinterpret_cast<BPlusTreePage *>(page->GetData());
+    while (!bptp->IsLeafPage()) {
+      InternalPage *internal_page = reinterpret_cast<InternalPage *>(bptp);
+      target = leftMost ? internal_page->ValueAt(0) : internal_page->Lookup(key, comparator_);
+      buffer_pool_manager_->UnpinPage(bptp->GetPageId(), true);
+      page = buffer_pool_manager_->FetchPage(target);
+      bptp = reinterpret_cast<BPlusTreePage *>(page->GetData());
+    }
 
-  return page;
+    return page;
 }
 
 /*
