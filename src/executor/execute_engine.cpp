@@ -58,6 +58,10 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateDatabase" << std::endl;
 #endif
+  DBStorageEngine NewDB(ast->val_);
+  DBStorageEngine *NewDBptr = &NewDB;
+  dbs_.insert(make_pair(ast->val_, NewDBptr));
+  return DB_SUCCESS;
   return DB_FAILED;
 }
 
@@ -65,6 +69,16 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDropDatabase" << std::endl;
 #endif
+  // 先找到要被drop的database
+  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
+  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+    if (it->first == ast->val_)  // 找到
+    {
+      DBStorageEngine *DBToDrop = it->second;
+      delete DBToDrop; // 删除这个database
+      return DB_SUCCESS;
+    }
+  }
   return DB_FAILED;
 }
 
@@ -72,13 +86,30 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowDatabases" << std::endl;
 #endif
-  return DB_FAILED;
+  // 打印unordered map中的databases
+  cout << "Database:" << endl;
+  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
+  if (dbs_.begin() == dbs_.end()) // 此时没有数据库
+    return DB_FAILED;
+  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+    cout << it->first << endl;
+  }
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteUseDatabase" << std::endl;
 #endif
+  // 找到database并把它作为current database
+  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
+  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+    if (it->first == ast->val_)  // 找到
+    {
+      current_db_ = ast->val_; // 作为current database
+      return DB_SUCCESS;
+    }
+  }
   return DB_FAILED;
 }
 
