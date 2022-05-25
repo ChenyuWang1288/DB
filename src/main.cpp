@@ -68,7 +68,9 @@ int main(int argc, char **argv) {
       printer.PrintTree(syntax_tree_file_mgr[syntax_tree_id++]);
 #endif
     }
-
+    /*SyntaxTreePrinter printer(MinisqlGetParserRootNode());
+    printer.PrintTree(syntax_tree_file_mgr[0]);
+    system("pause");*/
     ExecuteContext context;
     engine.Execute(MinisqlGetParserRootNode(), &context);
     sleep(1);

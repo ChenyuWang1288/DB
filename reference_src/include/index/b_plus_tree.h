@@ -81,6 +81,9 @@ private:
   void InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
                         Transaction *transaction = nullptr);
 
+  //In Destroy function 
+  void DestroyPage(BPlusTreePage *page);
+
   template<typename N>
   N *Split(N *node);
 

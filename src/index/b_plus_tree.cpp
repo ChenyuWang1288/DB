@@ -20,7 +20,30 @@ BPLUSTREE_TYPE::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_ma
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Destroy() {
+  if (IsEmpty()) {
+    return;
+  } else {
+    BPlusTreePage *root = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(root_page_id_)->GetData());
+    DestroyPage(root);
+  }
 }
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::DestroyPage(BPlusTreePage *page) {
+  if (page->IsLeafPage()) {
+    buffer_pool_manager_->UnpinPage(page->GetPageId(),true);
+    buffer_pool_manager_->DeletePage(page->GetPageId());
+  } else {
+    InternalPage *internal_page = reinterpret_cast<InternalPage *>(page);
+    for (int i = 0; i < internal_page->GetSize(); i++) {
+      /*get the child and recursively call DestroyPage*/
+      BPlusTreePage *child =
+          reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(internal_page->ValueAt(i))->GetData());
+      DestroyPage(child);
+    }
+  }
+}
+
 
 /*
  * Helper function to decide whether current b+tree is empty
@@ -91,7 +114,7 @@ void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   }
   BPlusTreeLeafPage<KeyType, ValueType, KeyComparator> *insert_pos =
       reinterpret_cast<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>*>(page->GetData());
-  insert_pos->Init(root_page_id_);
+  insert_pos->Init(root_page_id_, INVALID_PAGE_ID, leaf_max_size_);
   insert_pos->Insert(key, value, comparator_);
   buffer_pool_manager_->UnpinPage(insert_pos->GetPageId(),true);
 }
@@ -142,14 +165,15 @@ template<typename N>
 N *BPLUSTREE_TYPE::Split(N *node) {
   page_id_t created_page_id = INVALID_PAGE_ID;
   N *created_page = reinterpret_cast<N *>(buffer_pool_manager_->NewPage(created_page_id)->GetData());
-  created_page->Init(created_page_id);
   /*Init function has its default parameter*/
   if (node->IsLeafPage()) {
+    created_page->Init(created_page_id, INVALID_PAGE_ID, leaf_max_size_);
     LeafPage *leaf = reinterpret_cast<LeafPage *> (node);
     leaf->MoveHalfTo(reinterpret_cast<LeafPage*>(created_page));
   }
     
   else {
+    created_page->Init(created_page_id, INVALID_PAGE_ID, internal_max_size_);
     InternalPage *internal = reinterpret_cast<InternalPage *> (node);
     internal->MoveHalfTo(reinterpret_cast<InternalPage *> (created_page), buffer_pool_manager_);
   }
@@ -179,7 +203,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
       LOG(WARNING) << "New Page fails " << std::endl;
       return;
     }
-    new_root->Init(new_root_page_id);
+    new_root->Init(new_root_page_id, INVALID_PAGE_ID, internal_max_size_);
     root_page_id_ = new_root_page_id;
     /*here I choose to maintain the array_[0].first*/
     if (old_node->IsLeafPage()) {
@@ -277,13 +301,13 @@ bool BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) {
   N *pre_sibling = nullptr;
   N *next_sibling = nullptr;
   /*if N index is not 0 or the last child, it has previous and next siblings*/
-  if (this_index != 0 && this_index != node->GetSize()-1) {
+  if (this_index != 0 && this_index != parent->GetSize()-1) {
     pre_sibling = reinterpret_cast<N *>(buffer_pool_manager_->FetchPage(parent->ValueAt(this_index - 1))->GetData());
     next_sibling = reinterpret_cast<N *>(buffer_pool_manager_->FetchPage(parent->ValueAt(this_index + 1))->GetData());
   }
   else if (this_index == 0) {
     next_sibling = reinterpret_cast<N *>(buffer_pool_manager_->FetchPage(parent->ValueAt(this_index + 1))->GetData());
-  } else if (this_index == node->GetSize() - 1) {
+  } else if (this_index == parent->GetSize() - 1) {
     pre_sibling = reinterpret_cast<N *>(buffer_pool_manager_->FetchPage(parent->ValueAt(this_index - 1))->GetData());
   }
   /*first we try distribute*/
