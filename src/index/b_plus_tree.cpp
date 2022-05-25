@@ -258,15 +258,30 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   /*find where the key is*/
   LeafPage *target_leaf = reinterpret_cast<LeafPage *>(FindLeafPage(key)->GetData());
   target_leaf->RemoveAndDeleteRecord(key, comparator_);
-  /*update the value in parent*/
+  /*update the value in ancestor*/
+  InternalPage *parent = nullptr;
+  int update_index = -1; /*update_index is the updated key index, 
+                         if it is 0, we need to go to parent to update*/
   if (!target_leaf->IsRootPage()) {
-    InternalPage *parent =
+    parent =
         reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(target_leaf->GetParentPageId())->GetData());
       /*if the key in parent is smaller, 
       the smallest key in target leaf is deleted,we need to update*/
-    parent->SetKeyAt(parent->ValueIndex(target_leaf->GetPageId()), target_leaf->KeyAt(0));
-    buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+    update_index = parent->ValueIndex(target_leaf->GetPageId());
+    parent->SetKeyAt(update_index, target_leaf->KeyAt(0));
   }
+  InternalPage *p_parent = nullptr;
+  while (update_index == 0 && (!parent->IsRootPage())) {
+    p_parent = reinterpret_cast<InternalPage *>(buffer_pool_manager_->FetchPage(parent->GetParentPageId())->GetData());
+    update_index = p_parent->ValueIndex(parent->GetPageId());
+    p_parent->SetKeyAt(update_index, parent->KeyAt(0));
+    /*move higher and unpin*/
+    buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+    parent = p_parent;
+  }
+  buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+
+
   /*check if this leaf is root and if the size is less than minsize*/
   if (target_leaf->GetSize() < target_leaf->GetMinSize()) {
     CoalesceOrRedistribute(target_leaf, transaction);
