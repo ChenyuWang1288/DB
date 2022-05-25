@@ -505,7 +505,7 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() { 
-  KeyType key;
+  KeyType key{};
   LeafPage *target_leaf = reinterpret_cast<LeafPage *> (FindLeafPage(key, true)->GetData());
   return INDEXITERATOR_TYPE(target_leaf, 0, buffer_pool_manager_);
 }
