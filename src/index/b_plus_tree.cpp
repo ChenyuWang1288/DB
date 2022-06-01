@@ -108,6 +108,7 @@ bool BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::StartNewTree(const KeyType &key, const ValueType &value) {
   Page *page = buffer_pool_manager_->NewPage(root_page_id_);
+  UpdateRootPageId(0);//insert a new index
   if (page == nullptr) {
     LOG(WARNING) << "Fail to new page in insertion" << std::endl;
     throw "out of memory";
@@ -205,6 +206,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
     }
     new_root->Init(new_root_page_id, INVALID_PAGE_ID, internal_max_size_);
     root_page_id_ = new_root_page_id;
+    UpdateRootPageId(1);
     /*here I choose to maintain the array_[0].first*/
     if (old_node->IsLeafPage()) {
       LeafPage *old_leaf = reinterpret_cast<LeafPage *> (old_node);
@@ -477,6 +479,7 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
       buffer_pool_manager_->UnpinPage(old_root_node->GetPageId(), true);
       buffer_pool_manager_->DeletePage(old_root_node->GetPageId());
       root_page_id_ = INVALID_PAGE_ID;
+      UpdateRootPageId(2);
       return true;
     } else
       return false;
@@ -486,6 +489,7 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
     buffer_pool_manager_->UnpinPage(old_root_node->GetPageId(), true);
     buffer_pool_manager_->DeletePage(old_root_node->GetPageId());
     root_page_id_ = child_page;
+    UpdateRootPageId(1);
     BPlusTreePage* new_root=reinterpret_cast<BPlusTreePage*>(buffer_pool_manager_->FetchPage(child_page));
     new_root->SetParentPageId(INVALID_PAGE_ID);
     buffer_pool_manager_->UnpinPage(child_page,true);
@@ -569,7 +573,22 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::UpdateRootPageId(int insert_record) {
-
+    IndexRootsPage *index_roots_page =
+      reinterpret_cast<IndexRootsPage *>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+  //bool flag = false;
+  switch(insert_record){
+    case 1://update
+      index_roots_page->Update(index_id_, root_page_id_);
+      break;
+    case 2://delete
+      index_roots_page->Delete(index_id_);
+      break;
+    case 0://insert
+      index_roots_page->Insert(index_id_, root_page_id_);
+      break;
+  }
+  buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
+  return;
 }
 
 /**

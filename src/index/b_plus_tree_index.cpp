@@ -1,6 +1,7 @@
 #include "index/b_plus_tree_index.h"
 #include "index/generic_key.h"
 
+/*To Update index_roots_page I add a parameter index_roots_page_id*/
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_INDEX_TYPE::BPlusTreeIndex(index_id_t index_id, IndexSchema *key_schema,
                                      BufferPoolManager *buffer_pool_manager)

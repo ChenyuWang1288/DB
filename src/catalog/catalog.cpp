@@ -21,7 +21,7 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
                                LogManager *log_manager, bool init)
         : buffer_pool_manager_(buffer_pool_manager), lock_manager_(lock_manager),
           log_manager_(log_manager), heap_(new SimpleMemHeap()) {
-  // ASSERT(false, "Not Implemented yet");
+   //ASSERT(false, "Not Implemented yet");
 }
 
 CatalogManager::~CatalogManager() {
