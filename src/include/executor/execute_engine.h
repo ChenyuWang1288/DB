@@ -6,7 +6,7 @@
 #include "common/dberr.h"
 #include "common/instance.h"
 #include "transaction/transaction.h"
-
+#include "storage/table_iterator.h"
 extern "C" {
 #include "parser/parser.h"
 };
@@ -78,6 +78,8 @@ private:
   dberr_t ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context);
 
   dberr_t ExecuteQuit(pSyntaxNode ast, ExecuteContext *context);
+
+  CmpBool Travel(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root);
 
 private:
   [[maybe_unused]] std::unordered_map<std::string, DBStorageEngine *> dbs_;  /** all opened databases */
