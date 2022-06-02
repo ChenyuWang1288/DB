@@ -239,6 +239,9 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       TableInfo *currenttable;
       Currentp->catalog_mgr_->GetTable(NewTableName, currenttable);
       currenttable->CreatePrimarykey(primarykey);
+      if (primarykey.size() == 1) {
+        primarykey[0].SetUnique();
+      }
       return DB_SUCCESS;
     }
     
@@ -708,9 +711,24 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
         if ((*iterindexes)->GetIndexName() == (*columnsiter)->GetName()) {
             // 通过index找有无重复
-            
-          (*iterindexes)->GetIndex()->ScanKey(row, )
+          vector<RowId> result;
+          int position;
+          page_id_t leaf_page_id;
+          if((*iterindexes)->GetIndex()->ScanKey(row, result, position, leaf_page_id, txn) == DB_SUCCESS) {
+            cout << "对于Unique列，不应该插入重复的元组" << endl;
+            return DB_FAILED;
+          }
         }
+      }
+      // 如果该列上没有index，用tableiterator来检查有无重复tuple
+      TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+      for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+           tableit++) {
+        uint32_t indexop1{};
+        currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), indexop1);
+        Field * currentfield = (*tableit).GetField(indexop1);
+        if (currentfield->CompareEquals(newfield[indexop1]) == kTrue)
+            return DB_FAILED;
       }
     }
   }
