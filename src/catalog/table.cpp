@@ -35,10 +35,11 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, M
 
   buf += sizeof(uint32_t);
   if (magic_num != TABLE_METADATA_MAGIC_NUM) {
-    LOG(WARNING) << "MAGIC_NUM wrong in table Deserialize" << std::endl;
-    buf = begin;
-    return 0;
+    LOG(WARNING) << "MAGIC_NUM wrong in table_meta Deserialize" << std::endl;
+    buf = begin;//不改变buf
+    return 0;//返回为0则出错了
   }
+  //反序列化要得到的参数： table_id_（tid），table_name_（t_name），root_page_id_（rid），schema_（s）
   uint32_t tid = MACH_READ_UINT32(buf);
   buf += sizeof(uint32_t);
  
@@ -47,7 +48,7 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, M
 
   char *t_name = new char[name_length + 1];
   MACH_READ_STR(t_name, buf, name_length);
-  t_name[name_length] = 0;
+  t_name[name_length] = '\0';
   buf += name_length;
 
   uint32_t rid = MACH_READ_UINT32(buf);
@@ -57,10 +58,9 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, M
   *s=MACH_READ_FROM(Schema, buf);
   buf += sizeof(Schema);
 
-
-  table_meta = Create(tid, t_name, rid, s, heap);
+  table_meta = Create(tid, t_name, rid, s, heap);//创建元信息（所有的这里的类的信息都是由自己的heap创建的）
   size_t offset = buf - begin;
-  buf = begin;
+  buf = begin;//不更改buf的值
   delete[] t_name;
   return offset;
 }
