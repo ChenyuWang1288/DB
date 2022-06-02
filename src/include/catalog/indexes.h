@@ -60,7 +60,7 @@ public:
   ~IndexInfo() {
     delete heap_;
   }
-
+  //初始化参数，并且通过meta_data算出别的
   void Init(IndexMetadata *meta_data, TableInfo *table_info, BufferPoolManager *buffer_pool_manager) {
     meta_data_ = meta_data;
     table_info_ = table_info;
@@ -85,16 +85,15 @@ private:
   explicit IndexInfo() : meta_data_{nullptr}, index_{nullptr}, table_info_{nullptr},
                          key_schema_{nullptr}, heap_(new SimpleMemHeap()) {}
 
-  Index *CreateIndex(BufferPoolManager *buffer_pool_manager) {
-    ASSERT(false, "Not Implemented yet.");
-    return nullptr;
+  Index *CreateIndex(BufferPoolManager *buffer_pool_manager) { 
+     //?
   }
 
 private:
-  IndexMetadata *meta_data_;
-  Index *index_;
-  TableInfo *table_info_;
-  IndexSchema *key_schema_;
+  IndexMetadata *meta_data_;//元信息（其他三个均由反序列化后的元信息生成）
+  Index *index_;//索引对象
+  TableInfo *table_info_;//表格信息
+  IndexSchema *key_schema_;//索引模式
   MemHeap *heap_;
 };
 
