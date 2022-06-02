@@ -7,6 +7,7 @@
 #include "index/generic_key.h"
 #include "index/b_plus_tree_index.h"
 #include "record/schema.h"
+#include "common/macros.h"
 
 class IndexMetadata {
   friend class IndexInfo;
@@ -61,10 +62,13 @@ public:
   }
 
   void Init(IndexMetadata *meta_data, TableInfo *table_info, BufferPoolManager *buffer_pool_manager) {
+    meta_data_ = meta_data;
+    table_info_ = table_info;
+    key_schema_ = key_schema_->ShallowCopySchema(table_info->GetSchema(), meta_data->GetKeyMapping(), heap_);
+    index_ = CreateIndex(buffer_pool_manager);
     // Step1: init index metadata and table info
     // Step2: mapping index key to key schema
     // Step3: call CreateIndex to create the index
-    ASSERT(false, "Not Implemented yet.");
   }
 
   inline Index *GetIndex() { return index_; }
