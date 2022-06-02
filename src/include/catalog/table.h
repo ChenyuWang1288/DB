@@ -51,7 +51,7 @@ public:
     void *buf = heap->Allocate(sizeof(TableInfo));
     return new(buf)TableInfo();
   }
-
+   
   ~TableInfo() {
     delete heap_;
   }
