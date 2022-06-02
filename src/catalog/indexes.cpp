@@ -44,13 +44,13 @@ uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta, M
   }
   char *begin = buf;
   uint32_t magic_num = MACH_READ_UINT32(buf);
-
   buf += sizeof(uint32_t);
   if (magic_num != INDEX_METADATA_MAGIC_NUM) {
     LOG(WARNING) << "MAGIC_NUM wrong in index Deserialize" << std::endl;
     buf = begin;
     return 0;
   }
+  //需要反序列化得到一下参数：index_id_（iid），index_name_（i_name）， table_id_（tid），key_map_（kp）
   uint32_t iid = MACH_READ_UINT32(buf);
   buf += sizeof(uint32_t);
 
@@ -59,7 +59,7 @@ uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta, M
 
   char *i_name = new char[name_length + 1];
   MACH_READ_STR(i_name, buf, name_length);
-  i_name[name_length] = 0;
+  i_name[name_length] = '\0';
   buf += name_length;
 
   uint32_t tid = MACH_READ_UINT32(buf);
@@ -74,7 +74,7 @@ uint32_t IndexMetadata::DeserializeFrom(char *buf, IndexMetadata *&index_meta, M
     kt.push_back(a);
     buf += sizeof(uint32_t);
   }
-  index_meta = Create(iid, i_name, tid, kt, heap);
+  index_meta = Create(iid, i_name, tid, kt, heap);//构建元信息
   size_t offset = buf - begin;
   buf = begin;
   delete[] i_name;
