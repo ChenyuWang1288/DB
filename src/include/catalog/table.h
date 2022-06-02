@@ -73,6 +73,10 @@ public:
 
   inline page_id_t GetRootPageId() const { return table_meta_->root_page_id_; }
 
+  inline vector<Column> GetPrimaryKey() const { return primarykey; }
+
+  inline void CreatePrimaryKey(vector<Column> primarykey) { this->primarykey = primarykey; }
+
 private:
   explicit TableInfo() : heap_(new SimpleMemHeap()) {};
 
@@ -80,6 +84,7 @@ private:
   TableMetadata *table_meta_;
   TableHeap *table_heap_;
   MemHeap *heap_; /** store all objects allocated in table_meta and table heap */
+  vector<Column> primarykey;
 };
 
 #endif //MINISQL_TABLE_H
