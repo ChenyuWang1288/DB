@@ -73,15 +73,13 @@ public:
 
   inline page_id_t GetRootPageId() const { return table_meta_->root_page_id_; }
 
-<<<<<<< HEAD
   inline vector<Column> GetPrimarykey() const { return primarykey; }
 
   inline void CreatePrimarykey(vector<Column> &primarykey) { this->primarykey = primarykey; }
-=======
+
   inline vector<Column> GetPrimaryKey() const { return primarykey; }
 
-  inline void CreatePrimaryKey(vector<Column> primarykey) { this->primarykey = primarykey; }
->>>>>>> f857bc4d0896335e16279f5806dedf94d26c0368
+  inline void CreatePrimaryKey(vector<Column> &primarykey) { this->primarykey = primarykey; }
 
 private:
   explicit TableInfo() : heap_(new SimpleMemHeap()) {};
