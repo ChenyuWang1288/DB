@@ -103,18 +103,27 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
                                     Transaction *txn, TableInfo *&table_info) {
   next_table_id_ = catalog_meta_->GetNextTableId() + 1;//找到下一个的id
   //找到root_page_id
-  page_id_t page_id;
-  Page *k = buffer_pool_manager_->NewPage(page_id);//先分配一个新的页记录这个table
-  page_id_t root_page_id;
-  Page *l = buffer_pool_manager_->NewPage(page_id);  //先分配一个新的页记录这个table
-  TableMetadata *t = t->Create(next_table_id_, table_name, root_page_id, schema, heap_);  //这里root_page_id是谁
-  t->SerializeTo(k->GetData());//序列化这个元信息
-  LoadTable(next_table_id_, page_id);
+  page_id_t meta_page_id = INVALID_PAGE_ID;
+  Page *meta_page = buffer_pool_manager_->NewPage(meta_page_id);//meta data for this table
+  page_id_t root_page_id = INVALID_PAGE_ID;
+  Page *root_page = buffer_pool_manager_->NewPage(root_page_id);  //content for this table
+
+  /*create metadata for this table*/
+  TableMetadata *table_meta = TableMetadata::Create(next_table_id_, table_name, root_page_id, schema, heap_);  
+  table_meta->SerializeTo(meta_page->GetData());//序列化这个元信息
+
+  /*insert table_id ,meta page id pair in catalog meta data*/
+  LoadTable(next_table_id_, meta_page_id);
+
   FlushCatalogMetaPage();
-  table_info->Create(heap_);
-  TableHeap *p;
-  p = p->Create(buffer_pool_manager_, schema, txn, log_manager_, lock_manager_, heap_);
-  table_info->Init(t,p);
+
+  /*write the tableinfo*/
+  table_info = TableInfo::Create(heap_);
+  TableHeap *table_heap;
+  table_heap =TableHeap::Create(buffer_pool_manager_, schema, txn, log_manager_, lock_manager_, heap_);
+  table_info->Init(table_meta, table_heap);
+
+  /*update the info in catalog manager*/
   table_names_.insert(pair<string, table_id_t>(table_name, next_table_id_));
   tables_.insert(pair<table_id_t, TableInfo *>(next_table_id_, table_info));
 }
@@ -136,9 +145,22 @@ dberr_t CatalogManager::GetTables(vector<TableInfo *> &tables) const {
 dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string &index_name,
                                     const std::vector<std::string> &index_keys, Transaction *txn,
                                     IndexInfo *&index_info) {
-  table_id_t t = table_names_[table_name];
-  index_id_t next_index_id_ = catalog_meta_->GetNextIndexId() + 1;
-  page_id_t page_id;
+  /**/
+  table_id_t table_id = table_names_[table_name];
+  index_id_t next_index_id = catalog_meta_->GetNextIndexId() + 1;
+
+  /*the same as create table : new a page for metadata and a page for index content */
+
+  page_id_t meta_page_id=INVALID_PAGE_ID;
+  Page *meta_page = buffer_pool_manager_->NewPage(meta_page_id);
+  //page_id_t index
+
+
+
+
+
+
+  page_id_t meta_page_id;
   Page *k = buffer_pool_manager_->NewPage(page_id);
   //进行key_map的转换
   TableInfo *tinfo = tables_[t];
