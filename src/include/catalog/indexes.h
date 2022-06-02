@@ -86,8 +86,11 @@ private:
                          key_schema_{nullptr}, heap_(new SimpleMemHeap()) {}
 
   Index *CreateIndex(BufferPoolManager *buffer_pool_manager) { 
-     void *buf = heap_->Allocate(sizeof(BPlusTreeIndex));
-    return new (buf) BPlusTreeIndex(meta_data_->GetIndexId(), key_schema_, buffer_pool_manager);
+    using INDEX_KEY_TYPE = GenericKey<32>;
+    using INDEX_COMPARATOR_TYPE = GenericComparator<32>;
+    using BP_TREE_INDEX = BPlusTreeIndex<INDEX_KEY_TYPE, RowId, INDEX_COMPARATOR_TYPE>;
+    void *buf = heap_->Allocate(sizeof(BP_TREE_INDEX));
+    return new (buf) BP_TREE_INDEX(meta_data_->GetIndexId(), key_schema_, buffer_pool_manager);
   }
 
 private:
