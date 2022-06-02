@@ -35,10 +35,12 @@ dberr_t BPLUSTREE_INDEX_TYPE::RemoveEntry(const Row &key, RowId row_id, Transact
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-dberr_t BPLUSTREE_INDEX_TYPE::ScanKey(const Row &key, vector<RowId> &result, int &position, Transaction *txn) {
+dberr_t BPLUSTREE_INDEX_TYPE::ScanKey(const Row &key, vector<RowId> &result, int &position, page_id_t& leaf_page_id, Transaction *txn) {
+  /*position is first index in leaf page which [position].key>=key*/
+  /*leaf_page_id is the leaf page id for constructor of iterator*/
   KeyType index_key;
   index_key.SerializeFromKey(key, key_schema_);
-  if (container_.GetValue(index_key, result, position, txn)) {
+  if (container_.GetValue(index_key, result, position, leaf_page_id, txn)) {
     return DB_SUCCESS;
   }
   return DB_KEY_NOT_FOUND;
