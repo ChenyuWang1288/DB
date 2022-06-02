@@ -1,6 +1,7 @@
 #include "index/b_plus_tree_index.h"
 #include "index/generic_key.h"
 
+/*To Update index_roots_page I add a parameter index_roots_page_id*/
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_INDEX_TYPE::BPlusTreeIndex(index_id_t index_id, IndexSchema *key_schema,
                                      BufferPoolManager *buffer_pool_manager)
@@ -34,10 +35,12 @@ dberr_t BPLUSTREE_INDEX_TYPE::RemoveEntry(const Row &key, RowId row_id, Transact
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-dberr_t BPLUSTREE_INDEX_TYPE::ScanKey(const Row &key, vector<RowId> &result, Transaction *txn) {
+dberr_t BPLUSTREE_INDEX_TYPE::ScanKey(const Row &key, vector<RowId> &result, int &position, page_id_t& leaf_page_id, Transaction *txn) {
+  /*position is first index in leaf page which [position].key>=key*/
+  /*leaf_page_id is the leaf page id for constructor of iterator*/
   KeyType index_key;
   index_key.SerializeFromKey(key, key_schema_);
-  if (container_.GetValue(index_key, result, txn)) {
+  if (container_.GetValue(index_key, result, position, leaf_page_id, txn)) {
     return DB_SUCCESS;
   }
   return DB_KEY_NOT_FOUND;

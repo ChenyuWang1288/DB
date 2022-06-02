@@ -15,7 +15,8 @@ public:
 
   dberr_t RemoveEntry(const Row &key, RowId row_id, Transaction *txn) override;
 
-  dberr_t ScanKey(const Row &key, std::vector<RowId> &result, Transaction *txn) override;
+  dberr_t ScanKey(const Row &key, std::vector<RowId> &result, int &position,
+                  page_id_t &leaf_page_id, Transaction *txn) override;
 
   dberr_t Destroy() override;
 

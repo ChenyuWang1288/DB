@@ -7,6 +7,7 @@
 #include "index/generic_key.h"
 #include "index/b_plus_tree_index.h"
 #include "record/schema.h"
+#include "common/macros.h"
 
 class IndexMetadata {
   friend class IndexInfo;
@@ -59,12 +60,15 @@ public:
   ~IndexInfo() {
     delete heap_;
   }
-
+  //初始化参数，并且通过meta_data算出别的
   void Init(IndexMetadata *meta_data, TableInfo *table_info, BufferPoolManager *buffer_pool_manager) {
+    meta_data_ = meta_data;
+    table_info_ = table_info;
+    key_schema_ = key_schema_->ShallowCopySchema(table_info->GetSchema(), meta_data->GetKeyMapping(), heap_);
+    index_ = CreateIndex(buffer_pool_manager);
     // Step1: init index metadata and table info
     // Step2: mapping index key to key schema
     // Step3: call CreateIndex to create the index
-    ASSERT(false, "Not Implemented yet.");
   }
 
   inline Index *GetIndex() { return index_; }
@@ -81,16 +85,16 @@ private:
   explicit IndexInfo() : meta_data_{nullptr}, index_{nullptr}, table_info_{nullptr},
                          key_schema_{nullptr}, heap_(new SimpleMemHeap()) {}
 
-  Index *CreateIndex(BufferPoolManager *buffer_pool_manager) {
-    ASSERT(false, "Not Implemented yet.");
-    return nullptr;
+  Index *CreateIndex(BufferPoolManager *buffer_pool_manager) { 
+     void *buf = heap_->Allocate(sizeof(BPlusTreeIndex));
+    return new (buf) BPlusTreeIndex(meta_data_->GetIndexId(), key_schema_, buffer_pool_manager);
   }
 
 private:
-  IndexMetadata *meta_data_;
-  Index *index_;
-  TableInfo *table_info_;
-  IndexSchema *key_schema_;
+  IndexMetadata *meta_data_;//元信息（其他三个均由反序列化后的元信息生成）
+  Index *index_;//索引对象
+  TableInfo *table_info_;//表格信息
+  IndexSchema *key_schema_;//索引模式
   MemHeap *heap_;
 };
 
