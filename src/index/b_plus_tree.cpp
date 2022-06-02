@@ -62,7 +62,7 @@ bool BPLUSTREE_TYPE::IsEmpty() const {
  * @return : true means key exists
  */
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> &result, Transaction *transaction) {
+bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> &result, int& position, Transaction *transaction) {
 
   if (IsEmpty()) {
     return false;
@@ -71,6 +71,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> &result
   LeafPage *target_leaf = reinterpret_cast<LeafPage *>(FindLeafPage(key)->GetData());
   if (target_leaf->Lookup(key, ret_value, comparator_)) {
     result.push_back(ret_value);
+    postion = target_leaf->KeyIndex(key, comparator_);
     buffer_pool_manager_->UnpinPage(target_leaf->GetPageId(), true);
     return true;
   } else {

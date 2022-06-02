@@ -42,7 +42,7 @@ public:
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
 
   // return the value associated with a given key
-  bool GetValue(const KeyType &key, std::vector<ValueType> &result, Transaction *transaction = nullptr);
+  bool GetValue(const KeyType &key, std::vector<ValueType> &result, int& position, Transaction *transaction = nullptr);
 
   INDEXITERATOR_TYPE Begin();
 
