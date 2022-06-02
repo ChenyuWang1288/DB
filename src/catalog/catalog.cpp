@@ -139,7 +139,6 @@ dberr_t CatalogManager::GetTables(vector<TableInfo *> &tables) const {
   for ( it = tables_.begin(); it != tables_.end(); it++) {
     tables.push_back(it->second);
   }
-  tables.push_back(it->second);
 }
 
 dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string &index_name,
@@ -159,8 +158,7 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   vector<uint32_t> key_map;
   uint32_t column_index = -1;
   for (auto it = index_keys.begin(); it != index_keys.end(); it++) {
-    if ((table_info->GetSchema()->GetColumnIndex(*it, column_index) == DB_SUCCESS)
-        &&table_info->GetSchema()->GetColumn(column_index)->IsUnique()) {
+    if (table_info->GetSchema()->GetColumnIndex(*it, column_index) == DB_SUCCESS) {
       key_map.push_back(column_index);
     } else {
       /*this index_keys doesn't exist*/
@@ -224,6 +222,13 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
 }
 dberr_t CatalogManager::GetIndex(const std::string &table_name, const std::string &index_name,
                                  IndexInfo *&index_info) const {
+  unordered_map<string, index_id_t> k;
+  auto it = index_names_.find(table_name);
+  k = it->second;
+  auto a = k.find(index_name);
+  index_id_t index_id = a->second;
+  auto b = indexes_.find(index_id);
+  index_info = b->second;
 }
 
 dberr_t CatalogManager::GetTableIndexes(const std::string &table_name, std::vector<IndexInfo *> &indexes) const {
@@ -237,10 +242,7 @@ dberr_t CatalogManager::GetTableIndexes(const std::string &table_name, std::vect
     auto p = indexes_.find(t);
     indexes.push_back(p->second);
   }
-  index_id_t t;
-  t = i->second;
-  auto p = indexes_.find(t);
-  indexes.push_back(p->second);
+ 
 }
 
 dberr_t CatalogManager::DropTable(const string &table_name) { 
@@ -255,6 +257,7 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
 dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_name) {
   unordered_map<string, index_id_t> k;
   auto it = index_names_.find(table_name);
+  if (it == index_names_.end()) return DB_FAILED;
   k = it->second;
   auto t = k.find(index_name);
   index_id_t a = t->second;
