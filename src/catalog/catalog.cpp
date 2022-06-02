@@ -105,8 +105,10 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   //找到root_page_id
   page_id_t page_id;
   Page *k = buffer_pool_manager_->NewPage(page_id);//先分配一个新的页记录这个table
-  TableMetadata *t = t->Create(next_table_id_, table_name, page_id, schema, heap_);//
-  t->SerializeTo(k->GetData());
+  page_id_t root_page_id;
+  Page *l = buffer_pool_manager_->NewPage(page_id);  //先分配一个新的页记录这个table
+  TableMetadata *t = t->Create(next_table_id_, table_name, root_page_id, schema, heap_);  //这里root_page_id是谁
+  t->SerializeTo(k->GetData());//序列化这个元信息
   LoadTable(next_table_id_, page_id);
   FlushCatalogMetaPage();
   table_info->Create(heap_);
@@ -139,8 +141,24 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   page_id_t page_id;
   Page *k = buffer_pool_manager_->NewPage(page_id);
   //进行key_map的转换
+  TableInfo *tinfo = tables_[t];
+  vector<uint32_t> key_map_;
+  key_map_.clear();
+  Schema *schema = tinfo->GetSchema();
+  vector<Column *> columns_ = schema->GetColumns();
+  uint32_t size1 = columns_.size();
+  uint32_t size2 = index_keys.size();
+  for (uint32_t i=0;i<size1;i++)
+    for (uint32_t j = 0;j < size2; j++) {
+      string a= index_keys[i];
+      string b= columns_[j]->GetName();
+      if (a == b) {
+        key_map_.push_back(columns_[j]->GetTableInd());
+        break;
+      }
+    }
   IndexMetadata *p;
-  p = p->Create(next_index_id_, index_name, t, key_map, heap_);
+  p = p->Create(next_index_id_, index_name, t, key_map_, heap_);
   char *buf = NULL;
   p->SerializeTo(buf);
   uint32_t size = p->GetSerializedSize();
