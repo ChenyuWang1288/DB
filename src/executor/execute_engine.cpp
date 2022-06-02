@@ -3,6 +3,7 @@
 #include "storage/table_iterator.h"
 #include <stack>
 #include <math.h>
+#include <algorithm>
 ExecuteEngine::ExecuteEngine() {
 
 }
@@ -174,6 +175,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       break;
     }
   }
+  vector<Column> primarykey;
   ast = ast->child_;  // ast type kNodeColumnDefinitionList
   if (ast->type_ == kNodeColumnDefinitionList) {
     ast = ast->child_; // 遍历生成column的pSyntaxNode
@@ -216,26 +218,30 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       } 
       else if (ast->type_ == kNodeColumnList) {
         if (strcmp(ast->val_, "primary key")==0) {
-          vector<Column *> primarykey;
           tmp = ast->child_;
           while (tmp != NULL) {
             if (tmp->type_ == kNodeIdentifier) {
               for (i = NewColumns.begin(); i != NewColumns.end(); i++) {
                 if ((*i)->GetName() == tmp->val_) {
                   Column tmpC = *i;
-                  primarykey.push_back(&tmpC);
+                  primarykey.push_back(tmpC);
                 }
               }
             }
             tmp = tmp->next_;
           }
-          // txn->SetPrimaryKey(primarykey);
         }
       }
       ast = ast->next_;
     }
     TableSchema NewSchema(NewColumns);
-    return Currentp->catalog_mgr_->CreateTable(NewTableName, &NewSchema, txn, Newtable_info);
+    if (Currentp->catalog_mgr_->CreateTable(NewTableName, &NewSchema, txn, Newtable_info) == DB_SUCCESS) {
+      TableInfo *currenttable;
+      Currentp->catalog_mgr_->GetTable(NewTableName, currenttable);
+      currenttable->CreatePrimarykey(primarykey);
+      return DB_SUCCESS;
+    }
+    
     return DB_FAILED;
   }
   return DB_FAILED;
@@ -380,6 +386,75 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
   
   return DB_FAILED;
 }
+/* dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currenttable,
+                                        pSyntaxNode root, vector<RowId> * result) {
+  if (root->type_ == kNodeConnector) {
+    vector<RowId> left, right;
+    vector<RowId>::iterator iterleft;
+    NewTravel(Currentp, currenttable, root->child_, &left);
+    NewTravel(Currentp, currenttable, root->child_->next_, &right);
+    if (strcmp(root->val_, "and") == 0) {
+      for (iterleft = left.begin(); iterleft != left.end(); iterleft++) {
+        if (find(right.begin(), right.end(), *iterleft) != right.end()) {
+          (*result).push_back(*iterleft);
+        }
+      }
+    } 
+    else if (strcmp(root->val_, "or") == 0) {
+      (*result).insert((*result).end(), left.begin(), left.end());
+      (*result).insert((*result).end(), right.begin(), right.end());
+      sort((*result).begin(), (*result).end());
+      (*result).erase(unique((*result).begin(), (*result).end()), (*result).end());
+    }
+  } 
+  else if (root->type_ == kNodeCompareOperator) {
+    char *cmpoperator = root->val_;
+    char *op1 = root->child_->val_;
+    // if key 上有index
+    MemHeap *heap{};
+    IndexInfo *nowindex = IndexInfo::Create(heap);
+    // 存在该列的索引
+    if (Currentp->catalog_mgr_->GetIndex(currenttable->GetTableName(), op1, nowindex) != DB_INDEX_NOT_FOUND) {
+    } 
+    // 不存在该列的索引
+    else {
+      if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
+        char *op2 = root->child_->next_->val_;
+        Field *now{};
+        uint32_t op1index{};
+        if (currenttable->GetSchema()->GetColumnIndex(op1, op1index)) {
+          now = (*tableit).GetField(op1index);
+          TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
+          Field *pto;
+          if (typeop1 == kTypeInt) {
+            Field o(typeop1, atoi(op2));
+            pto = &o;
+          } else if (typeop1 == kTypeFloat) {
+            Field o(typeop1, (float)atof(op2));
+            pto = &o;
+          } else if (typeop1 == kTypeChar) {
+            Field o(typeop1, op2, strlen(op2), true);
+            pto = &o;
+          }
+
+          if (strcmp(cmpoperator, "=") == 0) {
+            return now->CompareEquals(*pto);
+          } else if (strcmp(cmpoperator, ">") == 0) {
+            return now->CompareGreaterThan(*pto);
+          } else if (strcmp(cmpoperator, "<") == 0) {
+            return now->CompareLessThan(*pto);
+          } else if (strcmp(cmpoperator, "!=") == 0) {
+            return now->CompareNotEquals(*pto);
+          } else if (strcmp(cmpoperator, "<=") == 0) {
+            return now->CompareLessThanEquals(*pto);
+          } else if (strcmp(cmpoperator, ">=") == 0) {
+            return now->CompareGreaterThanEquals(*pto);
+          }
+        }
+      }
+    }
+  }
+}*/
 CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root) {
   if (root->type_ == kNodeConnector) {
     if (strcmp(root->val_, "and") == 0) {
@@ -507,7 +582,24 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   // 此处开始判断条件
   if (ast->type_ == kNodeConditions) {
     pSyntaxNode root= ast->child_;
-    
+    // 只有一个条件，用index查询
+    /* if (ast->child_->type_ == kNodeCompareOperator) {
+        // 检查该列有没有index
+      MemHeap *heap{};
+      IndexInfo *nowindex = IndexInfo::Create(heap);
+      // 存在该列的索引
+      if (Currentp->catalog_mgr_->GetIndex(currenttable->GetTableName(), ast->child_->child_->val_, nowindex) !=
+          DB_INDEX_NOT_FOUND) {
+        uint32_t cindex;
+        Schema *cschema;
+        if (currenttable->GetSchema()->GetColumnIndex(ast->child_->child_->val_, cindex) == DB_COLUMN_NAME_NOT_EXIST)
+          return DB_COLUMN_NAME_NOT_EXIST;
+        currenttable->GetSchema()->GetColumn(cindex)->GetType();
+        IndexIterator < > indexit;
+        nowindex->GetIndex()->ScanKey();
+      }
+    }*/
+    // 通过迭代器查询
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
@@ -559,6 +651,8 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   DBStorageEngine *Currentp;
   TableInfo *currenttable;
   Transaction *txn{};
+  vector<IndexInfo *> indexes;
+  vector<IndexInfo *>::iterator iterindexes;
   /* 找到当前db */
   std::unordered_map<std::string, DBStorageEngine *>::iterator it;
   for (it = dbs_.begin(); it != dbs_.end(); it++) {
@@ -602,8 +696,36 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     ast = ast->next_;
   }
   Row row(newfield);
-  if(currenttable->GetTableHeap()->InsertTuple(row, txn))
+  Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
+  // 检查newfield是否符合插入条件
+  // 检查unique
+  vector<Column*> columns = currenttable->GetSchema()->GetColumns();
+  vector<Column *>::iterator columnsiter;
+  vector<Column*> uniqueColumns;
+  for (columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
+    if ((*columnsiter)->IsUnique()) {
+      // 如果该列上有index
+      for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+        if ((*iterindexes)->GetIndexName() == (*columnsiter)->GetName()) {
+            // 通过index找有无重复
+            
+          (*iterindexes)->GetIndex()->ScanKey(row, )
+        }
+      }
+    }
+  }
+  // 如果是主键 则检查有无重复元组
+  vector<Column> primarykey = currenttable->GetPrimarykey();
+  
+  
+  if (currenttable->GetTableHeap()->InsertTuple(row, txn)) {
+      // 检查indexex
+     for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+       if((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED)
+          return DB_FAILED;
+     }
     return DB_SUCCESS;
+  }
   return DB_FAILED;
 }
 
@@ -629,6 +751,9 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   }
   ast = ast->next_; // kNodeConditions
+  vector<IndexInfo *> indexes;
+  vector<IndexInfo *>::iterator iterindexes;
+  Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
   if (ast->type_ == kNodeConditions) {
     pSyntaxNode root = ast->child_;
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
@@ -639,7 +764,11 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
         Row row((*tableit).GetRowId());
         if(currenttable->GetTableHeap()->MarkDelete((*tableit).GetRowId(), txn) == false)
             return DB_FAILED;
+        // 在index里删掉
         currenttable->GetTableHeap()->ApplyDelete((*tableit).GetRowId(), txn);
+        for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+          if ((*iterindexes)->GetIndex()->RemoveEntry(row, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
+        }
         return DB_SUCCESS;
       }
     }
@@ -704,19 +833,35 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   if (astCondition->type_ == kNodeConditions) {
     pSyntaxNode root = ast->child_;
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+    // update之后还要updateindexes
+    vector<IndexInfo *> indexes;
+    vector<IndexInfo *>::iterator iterindexes;
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
       if (Travel(currenttable, tableit, root) == kTrue) {
           // update
-          Row row((*tableit).GetRowId());
-          currenttable->GetTableHeap()->GetTuple(&row, txn);
+          Row row1((*tableit).GetRowId());
+          
+          currenttable->GetTableHeap()->GetTuple(&row1, txn);
+          Row row = row1;
           vector<Field*> pre = row.GetFields();
           for (updateiter = update.begin(); updateiter != update.end(); updateiter++) {
             Swap(*(pre[updatecolumn]), (*updateiter));
             updatecolumn++;
           }
           RowId n = (*tableit).GetRowId();
-          currenttable->GetTableHeap()->UpdateTuple(row, n, txn);
+          if(currenttable->GetTableHeap()->UpdateTuple(row, n, txn) == false) return DB_FAILED;
+          
+          // 有indexes
+          if (Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes) != DB_INDEX_NOT_FOUND) {
+            for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+              // if ((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
+              if ((*iterindexes)->GetIndex()->RemoveEntry(row1, row1.GetRowId(), txn) == DB_FAILED) 
+                  return DB_FAILED;
+              if ((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED)
+                  return DB_FAILED;
+            }
+          }
       }
     }
     return DB_SUCCESS;

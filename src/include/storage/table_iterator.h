@@ -21,9 +21,9 @@ public:
   /*I delete the virtual destructor */
   //~TableIterator();
 
-  inline bool operator==(const TableIterator &itr) const;
+  inline bool operator==(const TableIterator &itr) const { return row_.GetRowId() == itr.row_.GetRowId(); }
 
-  inline bool operator!=(const TableIterator &itr) const;
+  inline bool operator!=(const TableIterator &itr) const { return !(itr == (*this)); }
 
   const Row &operator*();
 
