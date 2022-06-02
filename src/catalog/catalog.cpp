@@ -153,47 +153,73 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
 
   page_id_t meta_page_id=INVALID_PAGE_ID;
   Page *meta_page = buffer_pool_manager_->NewPage(meta_page_id);
-  //page_id_t index
-
-
-
-
-
-
-  page_id_t meta_page_id;
-  Page *k = buffer_pool_manager_->NewPage(page_id);
-  //进行key_map的转换
-  TableInfo *tinfo = tables_[t];
-  vector<uint32_t> key_map_;
-  key_map_.clear();
-  Schema *schema = tinfo->GetSchema();
-  vector<Column *> columns_ = schema->GetColumns();
-  uint32_t size1 = columns_.size();
-  uint32_t size2 = index_keys.size();
-  for (uint32_t i=0;i<size1;i++)
-    for (uint32_t j = 0;j < size2; j++) {
-      string a= index_keys[i];
-      string b= columns_[j]->GetName();
-      if (a == b) {
-        key_map_.push_back(columns_[j]->GetTableInd());
-        break;
-      }
+ 
+  /*create a key_map for index constructor*/
+  TableInfo *table_info = tables_[table_id];
+  vector<uint32_t> key_map;
+  uint32_t column_index = -1;
+  for (auto it = index_keys.begin(); it != index_keys.end(); it++) {
+    if (table_info->GetSchema()->GetColumnIndex(*it, column_index) == DB_SUCCESS) {
+      key_map.push_back(column_index);
+    } else {
+      /*this index_keys doesn't exist*/
+      return DB_FAILED;
     }
-  IndexMetadata *p;
-  p = p->Create(next_index_id_, index_name, t, key_map_, heap_);
-  char *buf = NULL;
-  p->SerializeTo(buf);
-  uint32_t size = p->GetSerializedSize();
-  memcpy(k->GetData(), buf, size);
-  LoadIndex(next_index_id_, page_id);
+  }
+  /*create indexmeta data*/
+  IndexMetadata *index_meta = IndexMetadata::Create(next_index_id, index_name, table_id, key_map, heap_);
+  index_meta->SerializeTo(meta_page->GetData());
+
+  LoadIndex(next_index_id_, meta_page_id);
   FlushCatalogMetaPage();
-  index_info->Create(heap_);
-  index_info->Init(p, tables_[t], buffer_pool_manager_);
-  unordered_map<string, index_id_t> q;
+
+  /*update the indexinfo*/
+  index_info = IndexInfo::Create(heap_);
+  index_info->Init(index_meta, table_info, buffer_pool_manager_);
+
   auto it = index_names_.find(table_name);
-  q = it->second;
-  q.insert(pair<string, index_id_t>(index_name, next_index_id_));
+
+  if (it==index_names_.end()) {
+    return DB_FAILED;
+  }
+  (it->second).insert(pair<string, index_id_t>(index_name, next_index_id_));
   indexes_.insert(pair<index_id_t, IndexInfo *>(next_index_id_, index_info));
+
+
+  //page_id_t meta_page_id;
+  //Page *k = buffer_pool_manager_->NewPage(page_id);
+  ////进行key_map的转换
+  //TableInfo *tinfo = tables_[t];
+  //vector<uint32_t> key_map_;
+  //key_map_.clear();
+  //Schema *schema = tinfo->GetSchema();
+  //vector<Column *> columns_ = schema->GetColumns();
+  //uint32_t size1 = columns_.size();
+  //uint32_t size2 = index_keys.size();
+  //for (uint32_t i=0;i<size1;i++)
+  //  for (uint32_t j = 0;j < size2; j++) {
+  //    string a= index_keys[i];
+  //    string b= columns_[j]->GetName();
+  //    if (a == b) {
+  //      key_map_.push_back(columns_[j]->GetTableInd());
+  //      break;
+  //    }
+  //  }
+  //IndexMetadata *p;
+  //p = p->Create(next_index_id_, index_name, t, key_map_, heap_);
+  //char *buf = NULL;
+  //p->SerializeTo(buf);
+  //uint32_t size = p->GetSerializedSize();
+  //memcpy(k->GetData(), buf, size);
+  //LoadIndex(next_index_id_, page_id);
+  //FlushCatalogMetaPage();
+  //index_info->Create(heap_);
+  //index_info->Init(p, tables_[t], buffer_pool_manager_);
+  //unordered_map<string, index_id_t> q;
+  //auto it = index_names_.find(table_name);
+  //q = it->second;
+  //q.insert(pair<string, index_id_t>(index_name, next_index_id_));
+  //indexes_.insert(pair<index_id_t, IndexInfo *>(next_index_id_, index_info));
 }
 dberr_t CatalogManager::GetIndex(const std::string &table_name, const std::string &index_name,
                                  IndexInfo *&index_info) const {
