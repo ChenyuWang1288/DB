@@ -4,13 +4,14 @@
 #include <string>
 #include <map>
 #include <unordered_map>
-
+#include "common/macros.h"
 #include "buffer/buffer_pool_manager.h"
 #include "catalog/indexes.h"
 #include "catalog/table.h"
 #include "common/config.h"
 #include "common/dberr.h"
 #include "transaction/lock_manager.h"
+
 #include "transaction/log_manager.h"
 #include "transaction/transaction.h"
 
