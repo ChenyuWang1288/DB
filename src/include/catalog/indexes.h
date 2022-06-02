@@ -86,7 +86,8 @@ private:
                          key_schema_{nullptr}, heap_(new SimpleMemHeap()) {}
 
   Index *CreateIndex(BufferPoolManager *buffer_pool_manager) { 
-     //?
+     void *buf = heap_->Allocate(sizeof(BPlusTreeIndex));
+    return new (buf) BPlusTreeIndex(meta_data_->GetIndexId(), key_schema_, buffer_pool_manager);
   }
 
 private:
