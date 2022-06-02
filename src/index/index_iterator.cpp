@@ -7,6 +7,13 @@ INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::IndexIterator(LeafPage *target_leaf
 
 }
 
+INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::IndexIterator(page_id_t leaf_page, int position,
+                                                           BufferPoolManager *buffer_pool_manager)
+    : target_leaf_(nullptr), index_(position), buffer_pool_manager_(buffer_pool_manager) {
+  target_leaf_ = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(leaf_page)->GetData());
+
+}
+
 INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::~IndexIterator() {
 
 }

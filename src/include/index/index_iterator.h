@@ -13,7 +13,8 @@ public:
 
   explicit IndexIterator(LeafPage *target_leaf, int index, BufferPoolManager *buffer_pool_manager);
 
-  explicit IndexIterator(page_id_t leaf_)
+  explicit IndexIterator(page_id_t leaf_page_id, int position, BufferPoolManager *buffer_pool_manager);
+
   ~IndexIterator();
 
   /** Return the key/value pair this iterator is currently pointing at. */
