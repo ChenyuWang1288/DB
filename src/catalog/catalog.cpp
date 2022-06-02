@@ -224,9 +224,6 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
 }
 dberr_t CatalogManager::GetIndex(const std::string &table_name, const std::string &index_name,
                                  IndexInfo *&index_info) const {
-  unordered_map<string, index_id_t> k ;
-  auto it = index_names_.find(table_name);
-  k = it->second;
 }
 
 dberr_t CatalogManager::GetTableIndexes(const std::string &table_name, std::vector<IndexInfo *> &indexes) const {
