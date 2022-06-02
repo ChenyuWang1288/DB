@@ -8,17 +8,17 @@
 #include "storage/table_heap.h"
 
 class TableMetadata {
-  friend class TableInfo;
+  friend class TableInfo;//table信息存在内存中的形式
 
 public:
-  uint32_t SerializeTo(char *buf) const;
+  uint32_t SerializeTo(char *buf) const;//序列化
 
-  uint32_t GetSerializedSize() const;
+  uint32_t GetSerializedSize() const;//求解大小
 
-  static uint32_t DeserializeFrom(char *buf, TableMetadata *&table_meta, MemHeap *heap);
+  static uint32_t DeserializeFrom(char *buf, TableMetadata *&table_meta, MemHeap *heap);//反序列化
 
   static TableMetadata *Create(table_id_t table_id, std::string table_name,
-                               page_id_t root_page_id, TableSchema *schema, MemHeap *heap);
+                               page_id_t root_page_id, TableSchema *schema, MemHeap *heap);//创建一个元信息
 
   inline table_id_t GetTableId() const { return table_id_; }
 
@@ -29,16 +29,16 @@ public:
   inline Schema *GetSchema() const { return schema_; }
 
 
-private:
+private://初始化
   TableMetadata() = delete;
 
   TableMetadata(table_id_t table_id, std::string table_name, page_id_t root_page_id, TableSchema *schema);
 
 private:
-  static constexpr uint32_t TABLE_METADATA_MAGIC_NUM = 344528;
+  static constexpr uint32_t TABLE_METADATA_MAGIC_NUM = 344528;//检验序列化的
   table_id_t table_id_;
   std::string table_name_;
-  page_id_t root_page_id_;
+  page_id_t root_page_id_;//？表格也以b+树形式建立嘛？
   Schema *schema_;
 };
 
