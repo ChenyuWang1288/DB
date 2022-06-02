@@ -17,10 +17,10 @@ TableIterator::TableIterator(Row row, TablePage *table_page, TableHeap *table_he
 //TableIterator::~TableIterator() {
 //
 //}
-
+/*
 bool TableIterator::operator==(const TableIterator &itr) const { return row_.GetRowId() == itr.row_.GetRowId(); }
 
-bool TableIterator::operator!=(const TableIterator &itr) const { return !(itr == (*this)); }
+bool TableIterator::operator!=(const TableIterator &itr) const { return !(itr == (*this)); } */
 
 const Row &TableIterator::operator*() { return row_; }
 
