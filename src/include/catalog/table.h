@@ -2,7 +2,7 @@
 #define MINISQL_TABLE_H
 
 #include <memory>
-
+#include "common/macros.h"
 #include "glog/logging.h"
 #include "record/schema.h"
 #include "storage/table_heap.h"
