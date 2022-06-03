@@ -234,8 +234,10 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       }
       ast = ast->next_;
     }
-    TableSchema NewSchema(NewColumns);
-    if (Currentp->catalog_mgr_->CreateTable(NewTableName, &NewSchema, txn, Newtable_info) == DB_SUCCESS) {
+    // TableSchema NewSchema(NewColumns);
+    // TableSchema *p = new
+    TableSchema* NewSchema= ALLOC_P(Currentp->catalog_mgr_->GetHeap(), TableSchema)(NewColumns);
+    if (Currentp->catalog_mgr_->CreateTable(NewTableName, NewSchema, txn, Newtable_info) == DB_SUCCESS) {
       // MemHeap *heap{};
       TableInfo *currenttable{};
       // currenttable->Create(heap);
