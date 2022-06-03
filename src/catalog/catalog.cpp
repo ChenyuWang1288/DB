@@ -42,7 +42,7 @@ CatalogMeta *CatalogMeta::DeserializeFrom(char *buf, MemHeap *heap) {
   uint32_t size = MACH_READ_UINT32(buf);
   buf += sizeof(uint32_t);
   for (uint32_t i = 0; i < size; i++) {
-    table_id_t k1=MACH_READ_UINT32(buf);
+    table_id_t k1 = MACH_READ_UINT32(buf);
     buf += sizeof(uint32_t);
     page_id_t k2 = MACH_READ_UINT32(buf);
     buf += sizeof(uint32_t);
@@ -67,7 +67,6 @@ uint32_t CatalogMeta::GetSerializedSize() const {
 }
 
 CatalogMeta::CatalogMeta() {}
-
 
 CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManager *lock_manager,
                                LogManager *log_manager, bool init)
@@ -139,9 +138,7 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
 
 }
 
-CatalogManager::~CatalogManager() {
-  delete heap_;
-}
+CatalogManager::~CatalogManager() { delete heap_; }
 
 dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schema,
                                     Transaction *txn, TableInfo *&table_info) {
@@ -154,7 +151,8 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   table_id_t table_id = next_table_id_++;
   //找到root_page_id
   page_id_t meta_page_id = INVALID_PAGE_ID;
-  Page *meta_page = buffer_pool_manager_->NewPage(meta_page_id);//meta data for this table
+  Page *meta_page = buffer_pool_manager_->NewPage(meta_page_id);  // meta data for this table
+  if (meta_page == nullptr) return DB_FAILED;
   page_id_t root_page_id = INVALID_PAGE_ID;
   buffer_pool_manager_->NewPage(root_page_id);  //content for this table
 
@@ -172,7 +170,7 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   /*write the tableinfo*/
   table_info = TableInfo::Create(heap_);
   TableHeap *table_heap;
-  table_heap =TableHeap::Create(buffer_pool_manager_, schema, txn, log_manager_, lock_manager_, heap_);
+  table_heap = TableHeap::Create(buffer_pool_manager_, schema, txn, log_manager_, lock_manager_, heap_);
   table_info->Init(table_meta, table_heap);
 
   /*update the info in catalog manager*/
@@ -359,7 +357,6 @@ dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_
   indexes_.erase(index_id);
   return DB_SUCCESS;
 }
-
 
 dberr_t CatalogManager::FlushCatalogMetaPage() const {
   Page *p = buffer_pool_manager_->FetchPage(CATALOG_META_PAGE_ID);

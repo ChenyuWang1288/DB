@@ -10,7 +10,7 @@ TEST(CatalogTest, CatalogMetaTest) {
   char *buf = reinterpret_cast<char *>(heap.Allocate(PAGE_SIZE));
   CatalogMeta *meta = CatalogMeta::NewInstance(&heap);
   // fill data
-  const int table_nums = 16;
+  const int table_nums =16;
   const int index_nums = 24;
   for (auto i = 0; i < table_nums; i++) {
     meta->GetTableMetaPages()->emplace(i, RandomUtils::RandomInt(0, 1 << 16));
@@ -38,8 +38,8 @@ TEST(CatalogTest, CatalogMetaTest) {
 }
 
 TEST(CatalogTest, CatalogTableTest) {
-  SimpleMemHeap heap;
-  /** Stage 2: Testing simple operation */
+SimpleMemHeap heap;
+  //Stage 2: Testing simple operation 
   auto db_01 = new DBStorageEngine(db_file_name, true);
   auto &catalog_01 = db_01->catalog_mgr_;
   TableInfo *table_info = nullptr;
@@ -59,7 +59,7 @@ TEST(CatalogTest, CatalogTableTest) {
   auto *table_heap = table_info->GetTableHeap();
   ASSERT_TRUE(table_heap != nullptr);
   delete db_01;
-  /** Stage 2: Testing catalog loading */
+  //Stage 2: Testing catalog loading 
   auto db_02 = new DBStorageEngine(db_file_name, false);
   auto &catalog_02 = db_02->catalog_mgr_;
   TableInfo *table_info_03 = nullptr;
@@ -104,6 +104,8 @@ TEST(CatalogTest, CatalogIndexTest) {
     ASSERT_EQ(DB_SUCCESS, index_info->GetIndex()->InsertEntry(row, rid, nullptr));
   }
   // Scan Key
+  int position;
+  page_id_t leaf_page_id;
   std::vector<RowId> ret;
   for (int i = 0; i < 10; i++) {
     std::vector<Field> fields{
