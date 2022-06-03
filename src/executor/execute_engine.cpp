@@ -75,8 +75,7 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
 #endif
   ast = ast->child_;
   // 先找到要被drop的database
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == ast->val_)  // 找到
     {
       DBStorageEngine *DBToDrop = it->second;
@@ -95,13 +94,12 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
 #endif
   // 打印unordered map中的databases
   cout << "Database:" << endl;
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  if (dbs_.begin() == dbs_.end())  // 此时没有数据库
+  if (dbs_.empty())  // 此时没有数据库
   {
     cout << "No database."<< endl;
     return DB_FAILED;
   }
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     cout << it->first << endl;
   }
   return DB_SUCCESS;
@@ -113,8 +111,7 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
 #endif
   ast = ast->child_;
   // 找到database并把它作为current database
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == ast->val_)  // 找到
     {
       current_db_ = ast->val_; // 作为current database
@@ -141,8 +138,7 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
   if (it != dbs_.end()) {
     if (Currentp->catalog_mgr_->GetTables(CurrentTable) == DB_FAILED) return DB_FAILED;
     // 遍历vector，输出每个表的名字
-    vector<TableInfo *>::iterator iter;
-    for (iter = CurrentTable.begin(); iter != CurrentTable.end(); iter++) {
+    for (auto iter = CurrentTable.begin(); iter != CurrentTable.end(); iter++) {
       cout << (*iter)->GetTableName() << endl;
     }
     return DB_SUCCESS;
@@ -160,15 +156,13 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   ast = ast->child_;
   string NewTableName = ast->val_;
   vector<Column *> NewColumns;
-  vector<Column *>::iterator i;
   uint32_t indexnum = 0;
   bool nullable = true;
   bool uniqueable = false;
   TypeId newtype;
   /* 找到现在的DB */
   DBStorageEngine *Currentp;
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
@@ -221,7 +215,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
           tmp = ast->child_;
           while (tmp != NULL) {
             if (tmp->type_ == kNodeIdentifier) {
-              for (i = NewColumns.begin(); i != NewColumns.end(); i++) {
+              for (auto i = NewColumns.begin(); i != NewColumns.end(); i++) {
                 if ((*i)->GetName() == tmp->val_) {
                   Column tmpC = *i;
                   primarykey.push_back(tmpC);
@@ -276,9 +270,7 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
 #endif
   DBStorageEngine *Currentp;
   vector<TableInfo*> tables;
-  vector<TableInfo *>::iterator iter;
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == current_db_) 
     {
       Currentp = it->second;
@@ -287,10 +279,9 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
   }
   Currentp->catalog_mgr_->GetTables(tables); // 把该db中的table放入tables
   if (ast->type_ == kNodeShowIndexes) {
-    for (iter = tables.begin(); iter != tables.end(); iter++) {
+    for (auto iter = tables.begin(); iter != tables.end(); iter++) {
       string tablename = (*iter)->GetTableName();
       vector<IndexInfo *> indexes_;
-      vector<IndexInfo *>::iterator it;
       Currentp->catalog_mgr_->GetTableIndexes(tablename, indexes_);
       // show indexes
       cout << "Table"
@@ -298,12 +289,11 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
            << "Key_name"
            << "Column name"
            << "Index_type" << endl;
-      for (it = indexes_.begin(); it != indexes_.end(); it++) {
+      for (auto it = indexes_.begin(); it != indexes_.end(); it++) {
         cout << tablename << " ";
         IndexSchema *indexc = (*it)->GetIndexKeySchema();
         vector<Column*> indexcolumns = indexc->GetColumns();
-        vector<Column *>::iterator i;
-        for (i = indexcolumns.begin(); i != indexcolumns.end(); i++) {
+        for (auto i = indexcolumns.begin(); i != indexcolumns.end(); i++) {
           cout << (*i)->GetName() << " ";
         }
         cout << endl;
@@ -325,8 +315,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   string method;
   vector<string> indexkeys;
   IndexInfo *index_info = NULL;
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == current_db_)
     {
       Currentp = it->second;
@@ -345,11 +334,6 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
       tmp = tmp->next_;
     }
   }
-  /*
-  if (ast->next_ != NULL) {
-    ast = ast->next_;
-    method = ast->val_;
-  } */
 
   return Currentp->catalog_mgr_->CreateIndex(tablename, indexname, indexkeys, txn, index_info);
   
@@ -361,8 +345,7 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
   LOG(INFO) << "ExecuteDropIndex" << std::endl;
 #endif
   DBStorageEngine *Currentp;
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == current_db_)
     {
       Currentp = it->second;
@@ -371,13 +354,11 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
   }
   ast = ast->child_;
   vector<TableInfo *> tables;
-  vector<TableInfo *>::iterator iter;
   Currentp->catalog_mgr_->GetTables(tables);
-  for (iter = tables.begin(); iter != tables.end(); iter++) {
+  for (auto iter = tables.begin(); iter != tables.end(); iter++) {
     vector<IndexInfo *> indexes;
-    vector<IndexInfo *>::iterator i;
     Currentp->catalog_mgr_->GetTableIndexes((*iter)->GetTableName(), indexes);
-    for (i = indexes.begin(); i != indexes.end(); i++) {
+    for (auto i = indexes.begin(); i != indexes.end(); i++) {
       if ((*i)->GetIndexName() == ast->val_)  // find the index
       {
         Currentp->catalog_mgr_->DropIndex((*iter)->GetTableName(), ast->val_);
@@ -553,10 +534,8 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   ast = ast->next_;
   TableInfo *currenttable;
   vector<Column *> columns;
-  vector<Column *>::iterator i;
   Transaction *txn{};
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == current_db_)
     {
       Currentp = it->second;
@@ -611,7 +590,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         Row row((*tableit).GetRowId());
         currenttable->GetTableHeap()->GetTuple(&row, txn);
         
-        for (i = columns.begin(); i != columns.end(); i++) {
+        for (auto i = columns.begin(); i != columns.end(); i++) {
           uint32_t tmpcolumnindex{};
           currenttable->GetSchema()->GetColumnIndex((*i)->GetName(), tmpcolumnindex);
           Field* tmpField = row.GetField(tmpcolumnindex);
@@ -632,7 +611,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
       Row row((*tableit).GetRowId());
       currenttable->GetTableHeap()->GetTuple(&row, txn);
 
-      for (i = columns.begin(); i != columns.end(); i++) {
+      for (auto i = columns.begin(); i != columns.end(); i++) {
         uint32_t tmpcolumnindex{};
         currenttable->GetSchema()->GetColumnIndex((*i)->GetName(), tmpcolumnindex);
         Field *tmpField = row.GetField(tmpcolumnindex);
@@ -655,10 +634,8 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   TableInfo *currenttable;
   Transaction *txn{};
   vector<IndexInfo *> indexes;
-  vector<IndexInfo *>::iterator iterindexes;
   /* 找到当前db */
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
@@ -693,22 +670,25 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     } 
     else if (ast->type_ == kNodeNull) {
       TypeId tmptype = currenttable->GetSchema()->GetColumn(ast->id_ - 1)->GetType();
+      if (currenttable->GetSchema()->GetColumn(ast->id_ - 1)->IsNullable() == false) {
+        cout << "不可以为空" << endl;
+        return DB_FAILED;
+      }
       Field tmpField(tmptype);
       newfield.push_back(tmpField);
     }
     ast = ast->next_;
   }
   Row row(newfield);
+  vector<Column *> columns = currenttable->GetSchema()->GetColumns();
   Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
   // 检查newfield是否符合插入条件
   // 检查unique
-  vector<Column*> columns = currenttable->GetSchema()->GetColumns();
-  vector<Column *>::iterator columnsiter;
   vector<Column*> uniqueColumns;
-  for (columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
+  for (auto columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
     if ((*columnsiter)->IsUnique()) {
       // 如果该列上有index
-      for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+      for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
         if ((*iterindexes)->GetIndexName() == (*columnsiter)->GetName()) {
             // 通过index找有无重复
           vector<RowId> result;
@@ -732,13 +712,35 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       }
     }
   }
-  // 如果是主键 则检查有无重复元组
   vector<Column> primarykey = currenttable->GetPrimarykey();
-  
+  // 如果是主键 则检查有无重复元组
+  if (primarykey.size() > 1) {
+    vector<uint32_t> columnindexes;
+    vector<uint32_t>::iterator iter;
+    for (auto piter = primarykey.begin(); piter != primarykey.end(); piter++) {
+      uint32_t tmpindex;
+      currenttable->GetSchema()->GetColumnIndex((*piter).GetName(), tmpindex);
+      columnindexes.push_back(tmpindex);
+    }
+      // 此时说明是联合主键
+    TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+    for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+         tableit++) {
+      for (iter = columnindexes.begin(); iter != columnindexes.end(); iter++) {
+        if (row.GetField(*iter)->CompareEquals(*((*tableit).GetField(*iter))) != kTrue) {
+          break;
+        }
+      }
+      if (iter == columnindexes.end())  // 所有的field都一样
+      {
+        return DB_FAILED;
+      }
+    }
+  }
   
   if (currenttable->GetTableHeap()->InsertTuple(row, txn)) {
       // 检查indexex
-     for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+     for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
        if((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED)
           return DB_FAILED;
      }
@@ -755,8 +757,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
   TableInfo *currenttable;
   Transaction *txn{};
   /* 找到当前db */
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
@@ -770,7 +771,6 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
   }
   ast = ast->next_; // kNodeConditions
   vector<IndexInfo *> indexes;
-  vector<IndexInfo *>::iterator iterindexes;
   Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
   if (ast->type_ == kNodeConditions) {
     pSyntaxNode root = ast->child_;
@@ -784,7 +784,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
             return DB_FAILED;
         // 在index里删掉
         currenttable->GetTableHeap()->ApplyDelete((*tableit).GetRowId(), txn);
-        for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+        for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
           if ((*iterindexes)->GetIndex()->RemoveEntry(row, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
         }
         return DB_SUCCESS;
@@ -802,8 +802,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   TableInfo *currenttable;
   Transaction *txn{};
   /* 找到当前db */
-  std::unordered_map<std::string, DBStorageEngine *>::iterator it;
-  for (it = dbs_.begin(); it != dbs_.end(); it++) {
+  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
@@ -842,18 +841,25 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
       else if (ast->child_->next_->type_ == kNodeString) {
         Field tmpField(kTypeChar, op2, strlen(op2), true);
         update.push_back(tmpField);
+      } 
+      else if (ast->child_->next_->type_ == kNodeNull) {
+        TypeId tmptype = currenttable->GetSchema()->GetColumn(ast->child_->next_->id_ - 1)->GetType();
+        if (currenttable->GetSchema()->GetColumn(ast->child_->next_->id_ - 1)->IsNullable() == false) {
+          cout << "不可以为空" << endl;
+          return DB_FAILED;
+        }
+        Field tmpField(tmptype);
+        update.push_back(tmpField);
       }
       ast = ast->next_;
     }
   }
-  vector<Field>::iterator updateiter;
   pSyntaxNode astCondition = ast->next_;  // kNodeConditions
   if (astCondition->type_ == kNodeConditions) {
     pSyntaxNode root = ast->child_;
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     // update之后还要updateindexes
     vector<IndexInfo *> indexes;
-    vector<IndexInfo *>::iterator iterindexes;
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
       if (Travel(currenttable, tableit, root) == kTrue) {
@@ -863,7 +869,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           currenttable->GetTableHeap()->GetTuple(&row1, txn);
           Row row = row1;
           vector<Field*> pre = row.GetFields();
-          for (updateiter = update.begin(); updateiter != update.end(); updateiter++) {
+          for (auto updateiter = update.begin(); updateiter != update.end(); updateiter++) {
             Swap(*(pre[updatecolumn]), (*updateiter));
             updatecolumn++;
           }
@@ -872,7 +878,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           
           // 有indexes
           if (Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes) != DB_INDEX_NOT_FOUND) {
-            for (iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+            for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
               // if ((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
               if ((*iterindexes)->GetIndex()->RemoveEntry(row1, row1.GetRowId(), txn) == DB_FAILED) 
                   return DB_FAILED;
