@@ -62,9 +62,9 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
   LOG(INFO) << "ExecuteCreateDatabase" << std::endl;
 #endif
   ast = ast->child_;
-  DBStorageEngine NewDB(ast->val_);
-  DBStorageEngine *NewDBptr = &NewDB;
+  DBStorageEngine *NewDBptr = new DBStorageEngine(ast->val_);
   dbs_.insert(make_pair(ast->val_, NewDBptr));
+  // delete NewDBptr;
   return DB_SUCCESS;
   return DB_FAILED;
 }
@@ -170,25 +170,29 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     }
   }
   vector<Column> primarykey;
-  ast = ast->child_;  // ast type kNodeColumnDefinitionList
+  ast = ast->next_;  // ast type kNodeColumnDefinitionList
   if (ast->type_ == kNodeColumnDefinitionList) {
     ast = ast->child_; // 遍历生成column的pSyntaxNode
     while (ast != NULL) {
+      uniqueable = false;
       pSyntaxNode tmp = ast;
       if (ast->type_ == kNodeColumnDefinition) {
         tmp = tmp->child_;
-        if (strcmp(ast->val_ ,"unique")==0) uniqueable = true;
+        if (ast->val_ != NULL && strcmp(ast->val_ ,"unique")==0) uniqueable = true;
         if (tmp->type_ == kNodeIdentifier) // column name
         {
           if (strcmp(tmp->next_->val_ ,"int") == 0) {
             newtype = kTypeInt;
-            Column newcol(tmp->val_, newtype, indexnum, nullable, uniqueable);
-            NewColumns.push_back(&newcol);
+            // Column newcol(tmp->val_, newtype, indexnum, nullable, uniqueable);
+            Column *newcolptr =
+                new Column(tmp->val_, newtype, indexnum, nullable, uniqueable);
+            NewColumns.push_back(newcolptr);
           } 
           else if (strcmp(tmp->next_->val_, "float")==0) {
             newtype = kTypeFloat;
-            Column newcol(tmp->val_, newtype, indexnum, nullable, uniqueable);
-            NewColumns.push_back(&newcol);
+            // Column newcol(tmp->val_, newtype, indexnum, nullable, uniqueable);
+            Column *newcolptr = new Column(tmp->val_, newtype, indexnum, nullable, uniqueable);
+            NewColumns.push_back(newcolptr);
           } 
           else if (strcmp(tmp->next_->val_, "char")==0) {
             newtype = kTypeChar;
@@ -204,14 +208,15 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
               return DB_FAILED;
             }
             length = ceil(l);
-            Column newcol(tmp->val_, newtype, length, indexnum, nullable, uniqueable);
-            NewColumns.push_back(&newcol);
+            // Column newcol(tmp->val_, newtype, length, indexnum, nullable, uniqueable);
+            Column *newcolptr = new Column(tmp->val_, newtype, length, indexnum, nullable, uniqueable);
+            NewColumns.push_back(newcolptr);
           }
           indexnum++;
         }
       } 
       else if (ast->type_ == kNodeColumnList) {
-        if (strcmp(ast->val_, "primary key")==0) {
+        if (strcmp(ast->val_, "primary keys")==0) {
           tmp = ast->child_;
           while (tmp != NULL) {
             if (tmp->type_ == kNodeIdentifier) {
@@ -219,6 +224,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
                 if ((*i)->GetName() == tmp->val_) {
                   Column tmpC = *i;
                   primarykey.push_back(tmpC);
+                  break;
                 }
               }
             }
@@ -230,7 +236,10 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     }
     TableSchema NewSchema(NewColumns);
     if (Currentp->catalog_mgr_->CreateTable(NewTableName, &NewSchema, txn, Newtable_info) == DB_SUCCESS) {
-      TableInfo *currenttable;
+      // MemHeap *heap{};
+      TableInfo *currenttable{};
+      // currenttable->Create(heap);
+
       Currentp->catalog_mgr_->GetTable(NewTableName, currenttable);
       currenttable->CreatePrimarykey(primarykey);
       if (primarykey.size() == 1) {
