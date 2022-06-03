@@ -70,7 +70,7 @@ bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> &result
   ValueType ret_value;
   LeafPage *target_leaf = reinterpret_cast<LeafPage *>(FindLeafPage(key)->GetData());
   position = target_leaf->KeyIndex(key, comparator_);
-  leaf_page_id = target_leaf->GetPageId();
+  // leaf_page_id = target_leaf->GetPageId();
   if (target_leaf->Lookup(key, ret_value, comparator_)) {
     result.push_back(ret_value);
     buffer_pool_manager_->UnpinPage(target_leaf->GetPageId(), true);
