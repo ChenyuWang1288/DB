@@ -153,15 +153,16 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   page_id_t meta_page_id = INVALID_PAGE_ID;
   Page *meta_page = buffer_pool_manager_->NewPage(meta_page_id);  // meta data for this table
   if (meta_page == nullptr) return DB_FAILED;
-  page_id_t root_page_id = INVALID_PAGE_ID;
-  buffer_pool_manager_->NewPage(root_page_id);  //content for this table
+
+  //page_id_t root_page_id = INVALID_PAGE_ID;
+  //buffer_pool_manager_->NewPage(root_page_id);  //content for this table
 
   /*create metadata for this table*/
-  TableMetadata *table_meta = TableMetadata::Create(table_id, table_name, root_page_id, schema, heap_);  
+  TableMetadata *table_meta = TableMetadata::Create(table_id, table_name, INVALID_PAGE_ID, schema, heap_);  
   table_meta->SerializeTo(meta_page->GetData());//序列化这个元信息
 
   buffer_pool_manager_->UnpinPage(meta_page_id, true);
-  buffer_pool_manager_->UnpinPage(root_page_id, true);
+  //buffer_pool_manager_->UnpinPage(root_page_id, true);
   /*insert table_id ,meta page id pair in catalog meta data*/
   LoadTable(table_id, meta_page_id);
 
@@ -170,7 +171,7 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   /*write the tableinfo*/
   table_info = TableInfo::Create(heap_);
   TableHeap *table_heap;
-  table_heap = TableHeap::Create(buffer_pool_manager_, schema, txn, log_manager_, lock_manager_, heap_);
+  table_heap = TableHeap::Create(buffer_pool_manager_,schema,txn ,log_manager_, lock_manager_, heap_);
   table_info->Init(table_meta, table_heap);
 
   /*update the info in catalog manager*/
