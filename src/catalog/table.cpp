@@ -12,24 +12,21 @@ uint32_t TableMetadata::SerializeTo(char *buf) const {
   buf += (unsigned long)table_name_.length();
   MACH_WRITE_UINT32(buf, root_page_id_);
   buf += sizeof(uint32_t);
-  MACH_WRITE_TO(Schema, buf, *schema_);
-  buf += sizeof(Schema);
+  /*schema */
+  buf += schema_->SerializeTo(buf);
   uint32_t offset = buf - begin;
   buf = begin;
   return offset;
 }
 
 uint32_t TableMetadata::GetSerializedSize() const {
-  return sizeof(uint32_t) * 4 + (unsigned long)table_name_.length() + sizeof(Schema) ;
+  return sizeof(uint32_t) * 4 + (unsigned long)table_name_.length() + schema_->GetSerializedSize();
 }
 
 /**
  * @param heap Memory heap passed by TableInfo
  */
 uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, MemHeap *heap) {
-  if (table_meta != nullptr) {
-    LOG(WARNING) << "Pointer to table_meta is not null in table_meta deserialize." << std::endl;
-  }
   char *begin = buf;
   uint32_t magic_num = MACH_READ_UINT32(buf);
 
@@ -54,9 +51,9 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, M
   uint32_t rid = MACH_READ_UINT32(buf);
   buf += sizeof(uint32_t);
 
-  Schema *s;
-  *s=MACH_READ_FROM(Schema, buf);
-  buf += sizeof(Schema);
+  /*deserialize schema*/
+  Schema *s = nullptr;
+  Schema::DeserializeFrom(buf, s, heap);
 
   table_meta = Create(tid, t_name, rid, s, heap);//创建元信息（所有的这里的类的信息都是由自己的heap创建的）
   size_t offset = buf - begin;

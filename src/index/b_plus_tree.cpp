@@ -69,8 +69,9 @@ bool BPLUSTREE_TYPE::IsEmpty() const {
  * This method is used for point query
  * @return : true means key exists
  */
+
 INDEX_TEMPLATE_ARGUMENTS
-bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> &result, int& position, page_id_t leaf_page_id,Transaction *transaction) {
+bool BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> &result, int& position, page_id_t &leaf_page_id,Transaction *transaction) {
 
   if (IsEmpty()) {
     return false;

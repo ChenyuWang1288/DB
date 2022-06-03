@@ -112,7 +112,12 @@ TEST(CatalogTest, CatalogIndexTest) {
     };
     Row row(fields);
     RowId rid(1000, i);
-    ASSERT_EQ(DB_SUCCESS, index_info->GetIndex()->ScanKey(row, ret, &txn));
+    /*to call ScanKey*/
+    int position = 0;
+    page_id_t leaf_page = 0;
+
+
+    ASSERT_EQ(DB_SUCCESS, index_info->GetIndex()->ScanKey(row, ret, position, leaf_page, &txn));
     ASSERT_EQ(rid.Get(), ret[i].Get());
   }
   delete db_01;
@@ -131,7 +136,11 @@ TEST(CatalogTest, CatalogIndexTest) {
     };
     Row row(fields);
     RowId rid(1000, i);
-    ASSERT_EQ(DB_SUCCESS, index_info_02->GetIndex()->ScanKey(row, ret_02, &txn));
+    /*to call ScanKey*/
+    int position = 0;
+    page_id_t leaf_page = 0;
+
+    ASSERT_EQ(DB_SUCCESS, index_info_02->GetIndex()->ScanKey(row, ret_02, position, leaf_page, &txn));
     ASSERT_EQ(rid.Get(), ret_02[i].Get());
   }
   delete db_02;
