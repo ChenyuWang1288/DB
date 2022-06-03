@@ -223,8 +223,8 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   vector<uint32_t> key_map;
   uint32_t column_index = -1;
   for (auto it = index_keys.begin(); it != index_keys.end(); it++) {
-    if (table_info->GetSchema()->GetColumnIndex(*it, column_index) == DB_SUCCESS /*&&
-        table_info->GetSchema()->GetColumn(column_index)->IsUnique()*/) {
+    if (table_info->GetSchema()->GetColumnIndex(*it, column_index) == DB_SUCCESS &&
+        table_info->GetSchema()->GetColumn(column_index)->IsUnique()) {
       key_map.push_back(column_index);
     } else {
       /*this index_keys doesn't exist or is is not unique*/
