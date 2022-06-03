@@ -14,10 +14,6 @@ void CatalogMeta::SerializeTo(char *buf) const {
     MACH_WRITE_UINT32(buf, i->second);
     buf += sizeof(uint32_t);
   }
-  MACH_WRITE_UINT32(buf, table_meta_pages_.end()->first);
-  buf += sizeof(uint32_t);
-  MACH_WRITE_UINT32(buf, table_meta_pages_.end()->second);
-  buf += sizeof(uint32_t);
 
   size = index_meta_pages_.size();
   MACH_WRITE_UINT32(buf, size);
@@ -129,10 +125,10 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
 
 dberr_t CatalogManager::GetTable(const string &table_name, TableInfo *&table_info) {
   auto it = table_names_.find(table_name);
-  if (it == table_names_.end()) return DB_FAILED;
+  if (it == table_names_.end()) return DB_TABLE_NOT_EXIST;
   table_id_t table_id = it->second;
   auto it_tables = tables_.find(table_id);
-  if (it_tables == tables_.end()) return DB_FAILED;
+  if (it_tables == tables_.end()) return DB_TABLE_NOT_EXIST;
   table_info = it_tables->second;  //将结果存到table_info中返回
   return DB_SUCCESS;
 }
