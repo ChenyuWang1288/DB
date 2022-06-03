@@ -32,7 +32,7 @@ public:
   TypeId GetType() const { return type_; }
 
   uint32_t SerializeTo(char *buf) const;
-
+   
   void SetUnique() { unique_ = true; }
   
   uint32_t GetSerializedSize() const;

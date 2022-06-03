@@ -85,14 +85,19 @@ uint32_t Column::DeserializeFrom(char *buf, Column *&column, MemHeap *heap) {
   TypeId type = MACH_READ_FROM(TypeId,buf);
   buf += sizeof(TypeId);
 
+  uint32_t len = MACH_READ_UINT32(buf);
+  buf += sizeof(uint32_t);
   uint32_t col_ind=MACH_READ_UINT32(buf);
   buf += sizeof(uint32_t);
   bool nullable=MACH_READ_BOOL(buf);
   buf += sizeof(bool);
   bool unique=MACH_READ_BOOL(buf);
   buf += sizeof(bool);
-
-  column = ALLOC_P(heap, Column)(column_name, type, col_ind, nullable, unique);
+  if (type == kTypeChar) {
+    column = ALLOC_P(heap, Column)(column_name, type, len, col_ind, nullable, unique);
+  } else {
+    column = ALLOC_P(heap, Column)(column_name, type, col_ind, nullable, unique);
+  }
   size_t offset = buf - begin;
   buf = begin;
   delete[] column_name;

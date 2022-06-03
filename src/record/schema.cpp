@@ -46,6 +46,8 @@ uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema, MemHeap *heap) {
     buf+=Column::DeserializeFrom(buf, (*it), heap);
   }
   
+  schema = ALLOC_P(heap, Schema)(columns);
+
   size_t offset = buf - begin;
   buf = begin;
   return offset;

@@ -114,7 +114,7 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
       /*update the map for tables*/
       table_names_.insert(make_pair(table_meta->GetTableName(), table_meta->GetTableId()));
       tables_.insert(make_pair(table_meta->GetTableId(), table_info));
-
+      index_names_.insert(make_pair(table_meta->GetTableName(), std::unordered_map<std::string, index_id_t>()));
     }
     /*deserialize all the indexinfo*/
     for (auto index_page = catalog_meta_->GetIndexMetaPages()->begin();
@@ -176,8 +176,9 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   table_info->Init(table_meta, table_heap);
 
   /*update the info in catalog manager*/
-  table_names_.insert(pair<string, table_id_t>(table_name, next_table_id_));
-  tables_.insert(pair<table_id_t, TableInfo *>(next_table_id_, table_info));
+  table_names_.insert(pair<string, table_id_t>(table_name, table_id));
+  tables_.insert(pair<table_id_t, TableInfo *>(table_id, table_info));
+  index_names_.insert(make_pair(table_name, std::unordered_map<std::string, index_id_t>()));
   return DB_SUCCESS;
 }
 
@@ -217,22 +218,21 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   }
   
   table_id_t table_id = table_names_[table_name];
-  index_id_t index_id = next_index_id_++;
 
   /*create a key_map for index constructor*/
   TableInfo *table_info = tables_[table_id];
   vector<uint32_t> key_map;
   uint32_t column_index = -1;
   for (auto it = index_keys.begin(); it != index_keys.end(); it++) {
-    if (table_info->GetSchema()->GetColumnIndex(*it, column_index) == DB_SUCCESS &&
-        table_info->GetSchema()->GetColumn(column_index)->IsUnique()) {
+    if (table_info->GetSchema()->GetColumnIndex(*it, column_index) == DB_SUCCESS /*&&
+        table_info->GetSchema()->GetColumn(column_index)->IsUnique()*/) {
       key_map.push_back(column_index);
     } else {
       /*this index_keys doesn't exist or is is not unique*/
       return DB_COLUMN_NAME_NOT_EXIST;
     }
   }
-
+  index_id_t index_id = next_index_id_++;
   /*the same as create table : new a page for metadata*/
 
   page_id_t meta_page_id=INVALID_PAGE_ID;
@@ -252,8 +252,8 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   index_info->Init(index_meta, table_info, buffer_pool_manager_);
 
   auto it = index_names_.find(table_name);
-  (it->second).insert(pair<string, index_id_t>(index_name, next_index_id_));
-  indexes_.insert(pair<index_id_t, IndexInfo *>(next_index_id_, index_info));
+  (it->second).insert(pair<string, index_id_t>(index_name, index_id));
+  indexes_.insert(pair<index_id_t, IndexInfo *>(index_id, index_info));
   
   /*build the index according to the table content*/
   auto index = index_info->GetIndex();
@@ -323,6 +323,8 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
   /*modify catalog manager's member*/
   table_names_.erase(table_name);
   tables_.erase(table_id);
+  index_names_.erase(table_name);
+
   return DB_SUCCESS;
 }
 
@@ -344,9 +346,14 @@ dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_
   Index *index = index_info->GetIndex();
   index->Destroy();
 
+  /*delete meta_data page*/
+  buffer_pool_manager_->DeletePage(
+      catalog_meta_->index_meta_pages_.find(index_id)->second);
+
   /*update the catalog metadata*/
   catalog_meta_->GetIndexMetaPages()->erase(index_id);
   FlushCatalogMetaPage();
+  
   /*update members in catalog manager*/
   index_names_.find(table_name)->second.erase(index_name);
   indexes_.erase(index_id);

@@ -25,8 +25,8 @@ DiskManager::DiskManager(const std::string &db_file) : file_name_(db_file) {
 }
 
 void DiskManager::Close() {
-  WritePage(META_PAGE_ID, meta_data_);
-  WritePage(MapPageId(extent_id_*BitmapPage<PAGE_SIZE>::GetMaxSupportedSize())-1,cur_bitmap_);
+  WritePhysicalPage(META_PAGE_ID, meta_data_);
+  WritePhysicalPage(MapPageId(extent_id_*BitmapPage<PAGE_SIZE>::GetMaxSupportedSize())-1,cur_bitmap_);
   std::scoped_lock<std::recursive_mutex> lock(db_io_latch_);
   if (!closed) {
     db_io_.close();
