@@ -54,7 +54,7 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, M
   uint32_t rid = MACH_READ_UINT32(buf);
   buf += sizeof(uint32_t);
 
-  Schema *s;
+  Schema *s{};
   *s=MACH_READ_FROM(Schema, buf);
   buf += sizeof(Schema);
 
