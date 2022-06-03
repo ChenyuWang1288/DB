@@ -8,15 +8,23 @@
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_TYPE::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
                           int leaf_max_size, int internal_max_size)
-        : index_id_(index_id),
+    : index_id_(index_id),
       /*root_page_id_ initialized as invalid page id*/
-          root_page_id_(INVALID_PAGE_ID),
-          buffer_pool_manager_(buffer_pool_manager),
-          comparator_(comparator),
-          leaf_max_size_(leaf_max_size),
-          internal_max_size_(internal_max_size) {
+      root_page_id_(INVALID_PAGE_ID),
+      buffer_pool_manager_(buffer_pool_manager),
+      comparator_(comparator),
+      leaf_max_size_(leaf_max_size),
+      internal_max_size_(internal_max_size){/*rebuild the b+ tree*/
+  IndexRootsPage *index_roots_page =
+      reinterpret_cast<IndexRootsPage *>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID)->GetData());
+  page_id_t root_id = INVALID_PAGE_ID;
 
+  if (index_roots_page->GetRootId(index_id, &root_id)) {
+    root_page_id_ = root_id;
+  }
+  buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, true);
 }
+
 
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Destroy() {
