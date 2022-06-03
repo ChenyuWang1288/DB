@@ -28,10 +28,7 @@ void CatalogMeta::SerializeTo(char *buf) const {
     MACH_WRITE_UINT32(buf, i->second);
     buf += sizeof(uint32_t);
   }
-  MACH_WRITE_UINT32(buf, index_meta_pages_.end()->first);
-  buf += sizeof(uint32_t);
-  MACH_WRITE_UINT32(buf, index_meta_pages_.end()->second);
-  buf += sizeof(uint32_t);
+
   buf = begin;
 }
 
@@ -127,6 +124,7 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   /*update the info in catalog manager*/
   table_names_.insert(pair<string, table_id_t>(table_name, next_table_id_));
   tables_.insert(pair<table_id_t, TableInfo *>(next_table_id_, table_info));
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::GetTable(const string &table_name, TableInfo *&table_info) {
@@ -136,10 +134,12 @@ dberr_t CatalogManager::GetTable(const string &table_name, TableInfo *&table_inf
   auto it_tables = tables_.find(table_id);
   if (it_tables == tables_.end()) return DB_FAILED;
   table_info = it_tables->second;  //将结果存到table_info中返回
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::GetTables(vector<TableInfo *> &tables) const {
   for (auto it = tables_.begin(); it != tables_.end(); it++) tables.push_back(it->second);
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string &index_name,
@@ -184,7 +184,7 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   }
   (it->second).insert(pair<string, index_id_t>(index_name, next_index_id_));
   indexes_.insert(pair<index_id_t, IndexInfo *>(next_index_id_, index_info));
-
+  return DB_SUCCESS;
   // page_id_t meta_page_id;
   // Page *k = buffer_pool_manager_->NewPage(page_id);
   ////进行key_map的转换
@@ -229,6 +229,7 @@ dberr_t CatalogManager::GetIndex(const std::string &table_name, const std::strin
   index_id_t index_id = a->second;
   auto b = indexes_.find(index_id);
   index_info = b->second;
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::GetTableIndexes(const std::string &table_name, std::vector<IndexInfo *> &indexes) const {
@@ -242,6 +243,7 @@ dberr_t CatalogManager::GetTableIndexes(const std::string &table_name, std::vect
     auto p = indexes_.find(t);
     indexes.push_back(p->second);
   }
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::DropTable(const string &table_name) {
@@ -252,6 +254,7 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
   p->~TableInfo();  //删除这个表信息指针
   tables_.erase(table_id);
   table_names_.erase(table_name);  //将存放的表格中的内容删掉
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_name) {
@@ -269,24 +272,29 @@ dberr_t CatalogManager::DropIndex(const string &table_name, const string &index_
   indexes_.erase(index_id);
   (it->second).erase(index_name);
   k.erase(index_name);
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::FlushCatalogMetaPage() const {
   Page *p = buffer_pool_manager_->FetchPage(CATALOG_META_PAGE_ID);
   catalog_meta_->SerializeTo(p->GetData());
   CatalogManager(buffer_pool_manager_, lock_manager_, log_manager_, 1);
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t page_id) {
   catalog_meta_->table_meta_pages_.insert(pair<table_id_t, page_id_t>(table_id, page_id));
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t page_id) {
   catalog_meta_->index_meta_pages_.insert(pair<index_id_t, page_id_t>(index_id, page_id));
+  return DB_SUCCESS;
 }
 
 dberr_t CatalogManager::GetTable(const table_id_t table_id, TableInfo *&table_info) {
   auto it = tables_.find(table_id);
   if (it == tables_.end()) return DB_FAILED;
   table_info = it->second;
+  return DB_SUCCESS;
 }
