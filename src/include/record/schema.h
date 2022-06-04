@@ -14,7 +14,7 @@ public:
 
   inline const std::vector<Column *> &GetColumns() const { return columns_; }
 
-  inline const Column *GetColumn(const uint32_t column_index) const { return columns_[column_index]; }
+  inline  Column *GetColumn(const uint32_t column_index) const { return columns_[column_index]; }
 
   dberr_t GetColumnIndex(const std::string &col_name, uint32_t &index) const {
     for (uint32_t i = 0; i < columns_.size(); ++i) {
