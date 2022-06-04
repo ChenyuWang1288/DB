@@ -1028,6 +1028,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           updatecolumn++;
         }
         Row nowrow(*iterresult);
+        currenttable->GetTableHeap()->GetTuple(&nowrow, txn);
         // 检查unique约束
         vector<Column *> uniqueColumns;
         for (auto columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
