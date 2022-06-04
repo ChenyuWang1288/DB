@@ -436,7 +436,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
           page_id_t leaf_page_id{};
           nowindex->GetIndex()->ScanKey(keyrow, scanresult, position, leaf_page_id, txn);
           BufferPoolManager *buffer_pool_manager = NULL;
-          IndexIterator<GenericKey<32>, int, GenericComparator<32>>(leaf_page_id, position,
+          IndexIterator<GenericKey<32>, RowId, GenericComparator<32> >(leaf_page_id, position,
                                                                               buffer_pool_manager);
       } 
       else if (root->child_->next_->type_ == kNodeNull) {

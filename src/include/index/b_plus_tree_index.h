@@ -9,6 +9,13 @@
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTreeIndex : public Index {
 public:
+
+  using KeyTypeName=KeyType;
+
+  using ValueTypeName=ValueType;
+
+  using KeyComparatorName=KeyComparator;
+
   BPlusTreeIndex(index_id_t index_id, IndexSchema *key_schema, BufferPoolManager *buffer_pool_manager);
 
   dberr_t InsertEntry(const Row &key, RowId row_id, Transaction *txn) override;
