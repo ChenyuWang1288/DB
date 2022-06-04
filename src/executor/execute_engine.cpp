@@ -75,14 +75,14 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
   LOG(INFO) << "ExecuteDropDatabase" << std::endl;
 #endif
   ast = ast->child_;
-  // ���ҵ�Ҫ��drop��database
+  // 先找到要被drop的database
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == ast->val_)  // �ҵ�
+    if (it->first == ast->val_)  // 找到
     {
       DBStorageEngine *DBToDrop = it->second;
-      delete DBToDrop; // ɾ�����database
+      delete DBToDrop; // 删除这个database
       // DBToDrop->~DBStorageEngine();
-      it = dbs_.erase(it); // ��unorderedmap���Ƴ���dbs
+      it = dbs_.erase(it); // 从unorderedmap中移除该dbs
       return DB_SUCCESS;
     }
   }
@@ -93,9 +93,9 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowDatabases" << std::endl;
 #endif
-  // ��ӡunordered map�е�databases
+  // 打印unordered map中的databases
   cout << "Database:" << endl;
-  if (dbs_.empty())  // ��ʱû�����ݿ�
+  if (dbs_.empty())  // 此时没有数据库
   {
     cout << "No database."<< endl;
     return DB_FAILED;
@@ -111,11 +111,11 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
   LOG(INFO) << "ExecuteUseDatabase" << std::endl;
 #endif
   ast = ast->child_;
-  // �ҵ�database��������Ϊcurrent database
+  // 找到database并把它作为current database
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == ast->val_)  // �ҵ�
+    if (it->first == ast->val_)  // 找到
     {
-      current_db_ = ast->val_; // ��Ϊcurrent database
+      current_db_ = ast->val_; // 作为current database
       return DB_SUCCESS;
     }
   }
@@ -130,7 +130,7 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
   vector<TableInfo *> CurrentTable;
   std::unordered_map<std::string, DBStorageEngine *>::iterator it;
   for (it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // �ҵ�
+    if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
       break;
@@ -138,7 +138,7 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
   }
   if (it != dbs_.end()) {
     if (Currentp->catalog_mgr_->GetTables(CurrentTable) == DB_FAILED) return DB_FAILED;
-    // ����vector�����ÿ����������
+    // 遍历vector，输出每个表的名字
     for (auto iter = CurrentTable.begin(); iter != CurrentTable.end(); iter++) {
       cout << (*iter)->GetTableName() << endl;
     }
@@ -161,10 +161,10 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   bool nullable = true;
   bool uniqueable = false;
   TypeId newtype;
-  /* �ҵ����ڵ�DB */
+  /* 找到现在的DB */
   DBStorageEngine *Currentp;
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // �ҵ�
+    if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
       break;
@@ -173,7 +173,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   vector<Column> primarykey;
   ast = ast->next_;  // ast type kNodeColumnDefinitionList
   if (ast->type_ == kNodeColumnDefinitionList) {
-    ast = ast->child_; // ��������column��pSyntaxNode
+    ast = ast->child_; // 遍历生成column的pSyntaxNode
     while (ast != NULL) {
       uniqueable = false;
       pSyntaxNode tmp = ast;
@@ -198,14 +198,14 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
           else if (strcmp(tmp->next_->val_, "char")==0) {
             newtype = kTypeChar;
             float l = atof(tmp->next_->child_->val_);
-            // �˴�Ӧ������Լ������
+            // 此处应该增加约束条件
             uint32_t length;
             if (ceil(l) != floor(l) || l < 0) {
-              cout << "�ַ����Ȳ�������" << endl;
+              cout << "字符长度不是整数" << endl;
               return DB_FAILED;
             }
             if (l <= 0) {
-              cout << "�ַ�������<=0" << endl;
+              cout << "字符串长度<=0" << endl;
               return DB_FAILED;
             }
             length = ceil(l);
@@ -264,7 +264,7 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
   DBStorageEngine *Currentp;
   std::unordered_map<std::string, DBStorageEngine *>::iterator it;
   for (it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // �ҵ�
+    if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
       break;
@@ -289,7 +289,7 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
       break;
     }
   }
-  Currentp->catalog_mgr_->GetTables(tables); // �Ѹ�db�е�table����tables
+  Currentp->catalog_mgr_->GetTables(tables); // 把该db中的table放入tables
   if (ast->type_ == kNodeShowIndexes) {
     for (auto iter = tables.begin(); iter != tables.end(); iter++) {
       string tablename = (*iter)->GetTableName();
@@ -411,10 +411,10 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
     char *cmpoperator = root->val_;
     char *op1 = root->child_->val_;
     char *op2 = root->child_->next_->val_;
-    // if key ����index
+    // if key 上有index
     MemHeap *heap{};
     IndexInfo *nowindex = IndexInfo::Create(heap);
-    // ���ڸ��е�����
+    // 存在该列的索引
     if (Currentp->catalog_mgr_->GetIndex(currenttable->GetTableName(), op1, nowindex) != DB_INDEX_NOT_FOUND) {
       vector<RowId> result;
       if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
@@ -452,7 +452,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
         }
       }
     } 
-    // �����ڸ��е�����
+    // 不存在该列的索引
     else {
       TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
       for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
@@ -556,7 +556,7 @@ CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, p
         return kTrue;
       return kFalse;
     }
-    return kFalse; // ���ܻ��б��Connector�ɲ�����������߷���һ��
+    return kFalse; // 可能还有别的Connector吧不管了现在这边返回一下
   } 
   else if (root->type_ == kNodeCompareOperator) {
     char *cmpoperator = root->val_;
@@ -649,7 +649,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   if(Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST)
       return DB_TABLE_NOT_EXIST;
   Schema *columnToSelect = currenttable->GetSchema();
-  /* ��Ҫ�ҵ�column�ŵ�columns�� */
+  /* 把要找的column放到columns里 */
   if (tmp->type_ == kNodeAllColumns) {
     columns = columnToSelect->GetColumns();
   } 
@@ -665,7 +665,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
     }
   }
   ast = ast->next_;
-  // �˴���ʼ�ж�����
+  // 此处开始判断条件
   if (ast->type_ == kNodeConditions) {
     pSyntaxNode root= ast->child_;
     vector<RowId> result;
@@ -682,12 +682,12 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         cout << endl;
       }
     }
-    // ͨ����������ѯ
+    // 通过迭代器查询
     /* TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
       if (Travel(currenttable, tableit, root) == kTrue) {
-          // ��ӡ
+          // 打印
         Row row((*tableit).GetRowId());
         currenttable->GetTableHeap()->GetTuple(&row, txn);
         
@@ -704,11 +704,11 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
     }*/
     return DB_SUCCESS;
   } 
-  else if (ast == NULL) { // û������
+  else if (ast == NULL) { // 没有条件
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
-      // ��ӡ
+      // 打印
       Row row((*tableit).GetRowId());
       currenttable->GetTableHeap()->GetTuple(&row, txn);
 
@@ -735,16 +735,16 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   TableInfo *currenttable;
   Transaction *txn{};
   vector<IndexInfo *> indexes;
-  /* �ҵ���ǰdb */
+  /* 找到当前db */
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // �ҵ�
+    if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
       break;
     }
   }
   ast = ast->child_;
-  /* �ҵ�Ҫ������ı� */
+  /* 找到要被插入的表 */
   if (ast->type_ == kNodeIdentifier) {
     if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) 
         return DB_TABLE_NOT_EXIST;
@@ -772,7 +772,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     else if (ast->type_ == kNodeNull) {
       TypeId tmptype = currenttable->GetSchema()->GetColumn(ast->id_ - 1)->GetType();
       if (currenttable->GetSchema()->GetColumn(ast->id_ - 1)->IsNullable() == false) {
-        cout << "������Ϊ��" << endl;
+        cout << "不可以为空" << endl;
         return DB_FAILED;
       }
       Field tmpField(tmptype);
@@ -783,25 +783,25 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   Row row(newfield);
   vector<Column *> columns = currenttable->GetSchema()->GetColumns();
   Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
-  // ���newfield�Ƿ���ϲ�������
-  // ���unique
+  // 检查newfield是否符合插入条件
+  // 检查unique
   vector<Column*> uniqueColumns;
   for (auto columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
     if ((*columnsiter)->IsUnique()) {
-      // �����������index
+      // 如果该列上有index
       for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
         if ((*iterindexes)->GetIndexName() == (*columnsiter)->GetName()) {
-            // ͨ��index�������ظ�
+            // 通过index找有无重复
           vector<RowId> result;
           int position;
           page_id_t leaf_page_id;
           if((*iterindexes)->GetIndex()->ScanKey(row, result, position, leaf_page_id, txn) == DB_SUCCESS) {
-            cout << "����Unique�У���Ӧ�ò����ظ���Ԫ��" << endl;
+            cout << "对于Unique列，不应该插入重复的元组" << endl;
             return DB_FAILED;
           }
         }
       }
-      // ���������û��index����tableiterator����������ظ�tuple
+      // 如果该列上没有index，用tableiterator来检查有无重复tuple
       TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
       for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
            tableit++) {
@@ -814,7 +814,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     }
   }
   vector<Column> primarykey = currenttable->GetPrimarykey();
-  // ��������� ���������ظ�Ԫ��
+  // 如果是主键 则检查有无重复元组
   if (primarykey.size() > 1) {
     vector<uint32_t> columnindexes;
     vector<uint32_t>::iterator iter;
@@ -823,7 +823,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       currenttable->GetSchema()->GetColumnIndex((*piter).GetName(), tmpindex);
       columnindexes.push_back(tmpindex);
     }
-      // ��ʱ˵������������
+      // 此时说明是联合主键
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
@@ -832,7 +832,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
           break;
         }
       }
-      if (iter == columnindexes.end())  // ���е�field��һ��
+      if (iter == columnindexes.end())  // 所有的field都一样
       {
         return DB_FAILED;
       }
@@ -840,7 +840,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   }
   
   if (currenttable->GetTableHeap()->InsertTuple(row, txn)) {
-      // ���indexex
+      // 检查indexex
      for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
        if((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED)
           return DB_FAILED;
@@ -857,16 +857,16 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
   DBStorageEngine *Currentp;
   TableInfo *currenttable;
   Transaction *txn{};
-  /* �ҵ���ǰdb */
+  /* 找到当前db */
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // �ҵ�
+    if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
       break;
     }
   }
   ast = ast->child_;
-  /* �ҵ�Ҫ��ɾ���ı� */
+  /* 找到要被删除的表 */
   if (ast->type_ == kNodeIdentifier) {
     if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   }
@@ -879,11 +879,11 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
       if (Travel(currenttable, tableit, root) == kTrue) {
-        // ɾ��
+        // 删除
         Row row((*tableit).GetRowId());
         if(currenttable->GetTableHeap()->MarkDelete((*tableit).GetRowId(), txn) == false)
             return DB_FAILED;
-        // ��index��ɾ��
+        // 在index里删掉
         currenttable->GetTableHeap()->ApplyDelete((*tableit).GetRowId(), txn);
         for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
           if ((*iterindexes)->GetIndex()->RemoveEntry(row, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
@@ -902,16 +902,16 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   DBStorageEngine *Currentp;
   TableInfo *currenttable;
   Transaction *txn{};
-  /* �ҵ���ǰdb */
+  /* 找到当前db */
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // �ҵ�
+    if (it->first == current_db_)  // 找到
     {
       Currentp = it->second;
       break;
     }
   }
   ast = ast->child_;
-  /* �ҵ�Ҫ�����µı� */
+  /* 找到要被更新的表 */
   if (ast->type_ == kNodeIdentifier) {
     if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   }
@@ -946,7 +946,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
       else if (ast->child_->next_->type_ == kNodeNull) {
         TypeId tmptype = currenttable->GetSchema()->GetColumn(ast->child_->next_->id_ - 1)->GetType();
         if (currenttable->GetSchema()->GetColumn(ast->child_->next_->id_ - 1)->IsNullable() == false) {
-          cout << "������Ϊ��" << endl;
+          cout << "不可以为空" << endl;
           return DB_FAILED;
         }
         Field tmpField(tmptype);
@@ -959,7 +959,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   if (astCondition->type_ == kNodeConditions) {
     pSyntaxNode root = ast->child_;
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
-    // update֮��Ҫupdateindexes
+    // update之后还要updateindexes
     vector<IndexInfo *> indexes;
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
@@ -977,7 +977,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           RowId n = (*tableit).GetRowId();
           if(currenttable->GetTableHeap()->UpdateTuple(row, n, txn) == false) return DB_FAILED;
           
-          // ��indexes
+          // 有indexes
           if (Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes) != DB_INDEX_NOT_FOUND) {
             for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
               // if ((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
