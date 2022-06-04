@@ -1,7 +1,7 @@
 #include "common/macros.h"
 #include "record/types.h"
 #include "record/field.h"
-
+#include <string>
 inline int CompareStrings(const char *str1, int len1, const char *str2, int len2) {
   assert(str1 != nullptr);
   assert(len1 >= 0);
@@ -80,6 +80,8 @@ CmpBool Type::CompareGreaterThanEquals(const Field &left, const Field &right) co
 
 // ==============================TypeInt=================================
 
+const char* TypeInt::GetData(const Field &val) const { return std::to_string(val.value_.integer_).c_str(); }
+
 uint32_t TypeInt::SerializeTo(const Field &field, char *buf) const {
   if (!field.IsNull()) {
     MACH_WRITE_TO(int32_t, buf, field.value_.integer_);
@@ -154,6 +156,7 @@ CmpBool TypeInt::CompareGreaterThanEquals(const Field &left, const Field &right)
 }
 
 // ==============================TypeFloat=============================
+const char* TypeFloat::GetData(const Field &val) const { return std::to_string(val.value_.float_).c_str(); }
 
 uint32_t TypeFloat::SerializeTo(const Field &field, char *buf) const {
   if (!field.IsNull()) {
