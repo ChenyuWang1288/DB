@@ -718,7 +718,10 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         uint32_t tmpcolumnindex{};
         currenttable->GetSchema()->GetColumnIndex((*i)->GetName(), tmpcolumnindex);
         Field *tmpField = row.GetField(tmpcolumnindex);
-        cout << tmpField->GetData() << " ";
+        if (tmpField->IsNull())
+          cout << "null"
+               << " ";
+        else cout << tmpField->GetData() << " ";
       }
       // row.GetField();
       cout << endl;
