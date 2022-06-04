@@ -1030,6 +1030,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
             TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
             for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
                  tableit++) {
+              if ((*tableit).GetRowId() == (*iterresult)) continue;
               uint32_t indexop1{};
               currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), indexop1);
               Field *currentfield = (*tableit).GetField(indexop1);
@@ -1050,6 +1051,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
           for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
                tableit++) {
+            if ((*tableit).GetRowId() == (*iterresult)) continue;
             for (iter = columnindexes.begin(); iter != columnindexes.end(); iter++) {
               if (nowrow.GetField(*iter)->CompareEquals(*((*tableit).GetField(*iter))) != kTrue) {
                 break;
