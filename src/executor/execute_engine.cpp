@@ -275,6 +275,7 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
   if (it != dbs_.end()) {
     return (Currentp->catalog_mgr_->DropTable(ast->val_));
   }
+  cout << "Fail to drop the table" << endl;
   return DB_FAILED;
 }
 
@@ -299,9 +300,13 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
       Currentp->catalog_mgr_->GetTableIndexes(tablename, indexes_);
       // show indexes
       cout << "Table"
+           << " "
            << "Non_unique"
+           << " "
            << "Key_name"
+           << " "
            << "Column name"
+           << " "
            << "Index_type" << endl;
       for (auto it = indexes_.begin(); it != indexes_.end(); it++) {
         cout << tablename << " ";
@@ -1059,6 +1064,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
             }
             if (iter == columnindexes.end())  // 所有的field都一样
             {
+              cout << "conflict with primary key!" << endl;
               return DB_FAILED;
             }
           }
