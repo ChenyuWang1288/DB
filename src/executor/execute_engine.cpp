@@ -681,14 +681,13 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
       uint32_t columnindex = 0;
       if (columnToSelect->GetColumnIndex(tmp->val_, columnindex) == DB_COLUMN_NAME_NOT_EXIST)
         return DB_COLUMN_NAME_NOT_EXIST;
-      Column nowColumn = columnToSelect->GetColumn(columnToSelect->GetColumnIndex(tmp->val_, columnindex));
-      columns.push_back(&nowColumn);
+      columns.push_back(columnToSelect->GetColumn(columnindex));
       tmp = tmp->next_;
     } 
   }
   ast = ast->next_;
   // 此处开始判断条件
-  if (ast->type_ == kNodeConditions) {
+  if (ast != NULL && ast->type_ == kNodeConditions) {
     pSyntaxNode root= ast->child_;
     vector<RowId> result;
     
@@ -722,6 +721,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         cout << tmpField->GetData() << " ";
       }
       // row.GetField();
+      cout << endl;
       cout << "-------------" << endl;
       
     }
@@ -768,13 +768,20 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
         }
         newfield.push_back(tmpField);
       } 
-      else { // integer
-        Field tmpField(kTypeInt, atoi(ast->val_));
-        if (columns.size() > newfield.size() && columns[newfield.size()]->GetType() != kTypeInt) {
+      else { // integer or float
+        
+        if (columns.size() > newfield.size() && columns[newfield.size()]->GetType() == kTypeInt) {
+          Field tmpField(kTypeInt, atoi(ast->val_));
+          newfield.push_back(tmpField);
+        }
+        else if (columns.size() > newfield.size() && columns[newfield.size()]->GetType() == kTypeFloat) {
+          Field tmpField(kTypeFloat, (float)atoi(ast->val_));
+          newfield.push_back(tmpField);
+        } 
+        else {
           cout << "Wrong Type!" << endl;
           return DB_FAILED;
         }
-        newfield.push_back(tmpField);
       }
     } 
     else if (ast->type_ == kNodeString) {
@@ -961,13 +968,21 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           }
           update.push_back(tmpField);
         } 
-        else {  // integer
+        else {  // integer or float
           Field tmpField(kTypeInt, atoi(op2));
-          if (columns.size() > update.size() && columns[update.size()]->GetType() != kTypeInt) {
+          if (columns.size() > update.size() && columns[update.size()]->GetType() == kTypeInt) {
+            Field tmpField(kTypeInt, atoi(op2));
+            update.push_back(tmpField);
+            
+          } 
+          else if (columns.size() > update.size() && columns[update.size()]->GetType() == kTypeFloat) {
+            Field tmpField(kTypeFloat, (float)atof(op2));
+            update.push_back(tmpField);
+          } 
+          else {
             cout << "Wrong Type!" << endl;
             return DB_FAILED;
           }
-          update.push_back(tmpField);
         }
       } 
       else if (ast->child_->next_->type_ == kNodeString) {
