@@ -75,14 +75,14 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
   LOG(INFO) << "ExecuteDropDatabase" << std::endl;
 #endif
   ast = ast->child_;
-  // ÏÈÕÒµ½Òª±»dropµÄdatabase
+  // ï¿½ï¿½ï¿½Òµï¿½Òªï¿½ï¿½dropï¿½ï¿½database
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == ast->val_)  // ÕÒµ½
+    if (it->first == ast->val_)  // ï¿½Òµï¿½
     {
       DBStorageEngine *DBToDrop = it->second;
-      delete DBToDrop; // É¾³ýÕâ¸ödatabase
+      delete DBToDrop; // É¾ï¿½ï¿½ï¿½ï¿½ï¿½database
       // DBToDrop->~DBStorageEngine();
-      it = dbs_.erase(it); // ´ÓunorderedmapÖÐÒÆ³ý¸Ãdbs
+      it = dbs_.erase(it); // ï¿½ï¿½unorderedmapï¿½ï¿½ï¿½Æ³ï¿½ï¿½ï¿½dbs
       return DB_SUCCESS;
     }
   }
@@ -93,9 +93,9 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowDatabases" << std::endl;
 #endif
-  // ´òÓ¡unordered mapÖÐµÄdatabases
+  // ï¿½ï¿½Ó¡unordered mapï¿½Ðµï¿½databases
   cout << "Database:" << endl;
-  if (dbs_.empty())  // ´ËÊ±Ã»ÓÐÊý¾Ý¿â
+  if (dbs_.empty())  // ï¿½ï¿½Ê±Ã»ï¿½ï¿½ï¿½ï¿½ï¿½Ý¿ï¿½
   {
     cout << "No database."<< endl;
     return DB_FAILED;
@@ -111,11 +111,11 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
   LOG(INFO) << "ExecuteUseDatabase" << std::endl;
 #endif
   ast = ast->child_;
-  // ÕÒµ½database²¢°ÑËü×÷Îªcurrent database
+  // ï¿½Òµï¿½databaseï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªcurrent database
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == ast->val_)  // ÕÒµ½
+    if (it->first == ast->val_)  // ï¿½Òµï¿½
     {
-      current_db_ = ast->val_; // ×÷Îªcurrent database
+      current_db_ = ast->val_; // ï¿½ï¿½Îªcurrent database
       return DB_SUCCESS;
     }
   }
@@ -130,7 +130,7 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
   vector<TableInfo *> CurrentTable;
   std::unordered_map<std::string, DBStorageEngine *>::iterator it;
   for (it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // ÕÒµ½
+    if (it->first == current_db_)  // ï¿½Òµï¿½
     {
       Currentp = it->second;
       break;
@@ -138,7 +138,7 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
   }
   if (it != dbs_.end()) {
     if (Currentp->catalog_mgr_->GetTables(CurrentTable) == DB_FAILED) return DB_FAILED;
-    // ±éÀúvector£¬Êä³öÃ¿¸ö±íµÄÃû×Ö
+    // ï¿½ï¿½ï¿½ï¿½vectorï¿½ï¿½ï¿½ï¿½ï¿½Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     for (auto iter = CurrentTable.begin(); iter != CurrentTable.end(); iter++) {
       cout << (*iter)->GetTableName() << endl;
     }
@@ -161,10 +161,10 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   bool nullable = true;
   bool uniqueable = false;
   TypeId newtype;
-  /* ÕÒµ½ÏÖÔÚµÄDB */
+  /* ï¿½Òµï¿½ï¿½ï¿½ï¿½Úµï¿½DB */
   DBStorageEngine *Currentp;
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // ÕÒµ½
+    if (it->first == current_db_)  // ï¿½Òµï¿½
     {
       Currentp = it->second;
       break;
@@ -173,7 +173,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   vector<Column> primarykey;
   ast = ast->next_;  // ast type kNodeColumnDefinitionList
   if (ast->type_ == kNodeColumnDefinitionList) {
-    ast = ast->child_; // ±éÀúÉú³ÉcolumnµÄpSyntaxNode
+    ast = ast->child_; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½columnï¿½ï¿½pSyntaxNode
     while (ast != NULL) {
       uniqueable = false;
       pSyntaxNode tmp = ast;
@@ -198,14 +198,14 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
           else if (strcmp(tmp->next_->val_, "char")==0) {
             newtype = kTypeChar;
             float l = atof(tmp->next_->child_->val_);
-            // ´Ë´¦Ó¦¸ÃÔö¼ÓÔ¼ÊøÌõ¼þ
+            // ï¿½Ë´ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             uint32_t length;
             if (ceil(l) != floor(l) || l < 0) {
-              cout << "×Ö·û³¤¶È²»ÊÇÕûÊý" << endl;
+              cout << "ï¿½Ö·ï¿½ï¿½ï¿½ï¿½È²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" << endl;
               return DB_FAILED;
             }
             if (l <= 0) {
-              cout << "×Ö·û´®³¤¶È<=0" << endl;
+              cout << "ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½<=0" << endl;
               return DB_FAILED;
             }
             length = ceil(l);
@@ -264,7 +264,7 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
   DBStorageEngine *Currentp;
   std::unordered_map<std::string, DBStorageEngine *>::iterator it;
   for (it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // ÕÒµ½
+    if (it->first == current_db_)  // ï¿½Òµï¿½
     {
       Currentp = it->second;
       break;
@@ -289,7 +289,7 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
       break;
     }
   }
-  Currentp->catalog_mgr_->GetTables(tables); // °Ñ¸ÃdbÖÐµÄtable·ÅÈëtables
+  Currentp->catalog_mgr_->GetTables(tables); // ï¿½Ñ¸ï¿½dbï¿½Ðµï¿½tableï¿½ï¿½ï¿½ï¿½tables
   if (ast->type_ == kNodeShowIndexes) {
     for (auto iter = tables.begin(); iter != tables.end(); iter++) {
       string tablename = (*iter)->GetTableName();
@@ -411,10 +411,10 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
     char *cmpoperator = root->val_;
     char *op1 = root->child_->val_;
     char *op2 = root->child_->next_->val_;
-    // if key ÉÏÓÐindex
+    // if key ï¿½ï¿½ï¿½ï¿½index
     MemHeap *heap{};
     IndexInfo *nowindex = IndexInfo::Create(heap);
-    // ´æÔÚ¸ÃÁÐµÄË÷Òý
+    // ï¿½ï¿½ï¿½Ú¸ï¿½ï¿½Ðµï¿½ï¿½ï¿½ï¿½ï¿½
     if (Currentp->catalog_mgr_->GetIndex(currenttable->GetTableName(), op1, nowindex) != DB_INDEX_NOT_FOUND) {
       vector<RowId> result;
       if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
@@ -452,7 +452,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
         }
       }
     } 
-    // ²»´æÔÚ¸ÃÁÐµÄË÷Òý
+    // ï¿½ï¿½ï¿½ï¿½ï¿½Ú¸ï¿½ï¿½Ðµï¿½ï¿½ï¿½ï¿½ï¿½
     else {
       TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
       for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
@@ -556,7 +556,7 @@ CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, p
         return kTrue;
       return kFalse;
     }
-    return kFalse; // ¿ÉÄÜ»¹ÓÐ±ðµÄConnector°É²»¹ÜÁËÏÖÔÚÕâ±ß·µ»ØÒ»ÏÂ
+    return kFalse; // ï¿½ï¿½ï¿½Ü»ï¿½ï¿½Ð±ï¿½ï¿½Connectorï¿½É²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß·ï¿½ï¿½ï¿½Ò»ï¿½ï¿½
   } 
   else if (root->type_ == kNodeCompareOperator) {
     char *cmpoperator = root->val_;
@@ -649,7 +649,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   if(Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST)
       return DB_TABLE_NOT_EXIST;
   Schema *columnToSelect = currenttable->GetSchema();
-  /* °ÑÒªÕÒµÄcolumn·Åµ½columnsÀï */
+  /* ï¿½ï¿½Òªï¿½Òµï¿½columnï¿½Åµï¿½columnsï¿½ï¿½ */
   if (tmp->type_ == kNodeAllColumns) {
     columns = columnToSelect->GetColumns();
   } 
@@ -665,7 +665,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
     }
   }
   ast = ast->next_;
-  // ´Ë´¦¿ªÊ¼ÅÐ¶ÏÌõ¼þ
+  // ï¿½Ë´ï¿½ï¿½ï¿½Ê¼ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½ï¿½
   if (ast->type_ == kNodeConditions) {
     pSyntaxNode root= ast->child_;
     vector<RowId> result;
@@ -682,12 +682,12 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         cout << endl;
       }
     }
-    // Í¨¹ýµü´úÆ÷²éÑ¯
+    // Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¯
     /* TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
       if (Travel(currenttable, tableit, root) == kTrue) {
-          // ´òÓ¡
+          // ï¿½ï¿½Ó¡
         Row row((*tableit).GetRowId());
         currenttable->GetTableHeap()->GetTuple(&row, txn);
         
@@ -704,11 +704,11 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
     }*/
     return DB_SUCCESS;
   } 
-  else if (ast == NULL) { // Ã»ÓÐÌõ¼þ
+  else if (ast == NULL) { // Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
-      // ´òÓ¡
+      // ï¿½ï¿½Ó¡
       Row row((*tableit).GetRowId());
       currenttable->GetTableHeap()->GetTuple(&row, txn);
 
@@ -735,16 +735,16 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   TableInfo *currenttable;
   Transaction *txn{};
   vector<IndexInfo *> indexes;
-  /* ÕÒµ½µ±Ç°db */
+  /* ï¿½Òµï¿½ï¿½ï¿½Ç°db */
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // ÕÒµ½
+    if (it->first == current_db_)  // ï¿½Òµï¿½
     {
       Currentp = it->second;
       break;
     }
   }
   ast = ast->child_;
-  /* ÕÒµ½Òª±»²åÈëµÄ±í */
+  /* ï¿½Òµï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä±ï¿½ */
   if (ast->type_ == kNodeIdentifier) {
     if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) 
         return DB_TABLE_NOT_EXIST;
@@ -772,7 +772,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     else if (ast->type_ == kNodeNull) {
       TypeId tmptype = currenttable->GetSchema()->GetColumn(ast->id_ - 1)->GetType();
       if (currenttable->GetSchema()->GetColumn(ast->id_ - 1)->IsNullable() == false) {
-        cout << "²»¿ÉÒÔÎª¿Õ" << endl;
+        cout << "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½" << endl;
         return DB_FAILED;
       }
       Field tmpField(tmptype);
@@ -783,25 +783,25 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   Row row(newfield);
   vector<Column *> columns = currenttable->GetSchema()->GetColumns();
   Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
-  // ¼ì²énewfieldÊÇ·ñ·ûºÏ²åÈëÌõ¼þ
-  // ¼ì²éunique
+  // ï¿½ï¿½ï¿½newfieldï¿½Ç·ï¿½ï¿½ï¿½Ï²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+  // ï¿½ï¿½ï¿½unique
   vector<Column*> uniqueColumns;
   for (auto columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
     if ((*columnsiter)->IsUnique()) {
-      // Èç¹û¸ÃÁÐÉÏÓÐindex
+      // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½index
       for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
         if ((*iterindexes)->GetIndexName() == (*columnsiter)->GetName()) {
-            // Í¨¹ýindexÕÒÓÐÎÞÖØ¸´
+            // Í¨ï¿½ï¿½indexï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½
           vector<RowId> result;
           int position;
           page_id_t leaf_page_id;
           if((*iterindexes)->GetIndex()->ScanKey(row, result, position, leaf_page_id, txn) == DB_SUCCESS) {
-            cout << "¶ÔÓÚUniqueÁÐ£¬²»Ó¦¸Ã²åÈëÖØ¸´µÄÔª×é" << endl;
+            cout << "ï¿½ï¿½ï¿½ï¿½Uniqueï¿½Ð£ï¿½ï¿½ï¿½Ó¦ï¿½Ã²ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½Ôªï¿½ï¿½" << endl;
             return DB_FAILED;
           }
         }
       }
-      // Èç¹û¸ÃÁÐÉÏÃ»ÓÐindex£¬ÓÃtableiteratorÀ´¼ì²éÓÐÎÞÖØ¸´tuple
+      // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½indexï¿½ï¿½ï¿½ï¿½tableiteratorï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½tuple
       TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
       for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
            tableit++) {
@@ -814,7 +814,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     }
   }
   vector<Column> primarykey = currenttable->GetPrimarykey();
-  // Èç¹ûÊÇÖ÷¼ü Ôò¼ì²éÓÐÎÞÖØ¸´Ôª×é
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½Ôªï¿½ï¿½
   if (primarykey.size() > 1) {
     vector<uint32_t> columnindexes;
     vector<uint32_t>::iterator iter;
@@ -823,7 +823,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       currenttable->GetSchema()->GetColumnIndex((*piter).GetName(), tmpindex);
       columnindexes.push_back(tmpindex);
     }
-      // ´ËÊ±ËµÃ÷ÊÇÁªºÏÖ÷¼ü
+      // ï¿½ï¿½Ê±Ëµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
@@ -832,7 +832,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
           break;
         }
       }
-      if (iter == columnindexes.end())  // ËùÓÐµÄfield¶¼Ò»Ñù
+      if (iter == columnindexes.end())  // ï¿½ï¿½ï¿½Ðµï¿½fieldï¿½ï¿½Ò»ï¿½ï¿½
       {
         return DB_FAILED;
       }
@@ -840,7 +840,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   }
   
   if (currenttable->GetTableHeap()->InsertTuple(row, txn)) {
-      // ¼ì²éindexex
+      // ï¿½ï¿½ï¿½indexex
      for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
        if((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED)
           return DB_FAILED;
@@ -857,16 +857,16 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
   DBStorageEngine *Currentp;
   TableInfo *currenttable;
   Transaction *txn{};
-  /* ÕÒµ½µ±Ç°db */
+  /* ï¿½Òµï¿½ï¿½ï¿½Ç°db */
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // ÕÒµ½
+    if (it->first == current_db_)  // ï¿½Òµï¿½
     {
       Currentp = it->second;
       break;
     }
   }
   ast = ast->child_;
-  /* ÕÒµ½Òª±»É¾³ýµÄ±í */
+  /* ï¿½Òµï¿½Òªï¿½ï¿½É¾ï¿½ï¿½ï¿½Ä±ï¿½ */
   if (ast->type_ == kNodeIdentifier) {
     if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   }
@@ -879,11 +879,11 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
       if (Travel(currenttable, tableit, root) == kTrue) {
-        // É¾³ý
+        // É¾ï¿½ï¿½
         Row row((*tableit).GetRowId());
         if(currenttable->GetTableHeap()->MarkDelete((*tableit).GetRowId(), txn) == false)
             return DB_FAILED;
-        // ÔÚindexÀïÉ¾µô
+        // ï¿½ï¿½indexï¿½ï¿½É¾ï¿½ï¿½
         currenttable->GetTableHeap()->ApplyDelete((*tableit).GetRowId(), txn);
         for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
           if ((*iterindexes)->GetIndex()->RemoveEntry(row, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
@@ -902,16 +902,16 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   DBStorageEngine *Currentp;
   TableInfo *currenttable;
   Transaction *txn{};
-  /* ÕÒµ½µ±Ç°db */
+  /* ï¿½Òµï¿½ï¿½ï¿½Ç°db */
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)  // ÕÒµ½
+    if (it->first == current_db_)  // ï¿½Òµï¿½
     {
       Currentp = it->second;
       break;
     }
   }
   ast = ast->child_;
-  /* ÕÒµ½Òª±»¸üÐÂµÄ±í */
+  /* ï¿½Òµï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ÂµÄ±ï¿½ */
   if (ast->type_ == kNodeIdentifier) {
     if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   }
@@ -946,7 +946,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
       else if (ast->child_->next_->type_ == kNodeNull) {
         TypeId tmptype = currenttable->GetSchema()->GetColumn(ast->child_->next_->id_ - 1)->GetType();
         if (currenttable->GetSchema()->GetColumn(ast->child_->next_->id_ - 1)->IsNullable() == false) {
-          cout << "²»¿ÉÒÔÎª¿Õ" << endl;
+          cout << "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½" << endl;
           return DB_FAILED;
         }
         Field tmpField(tmptype);
@@ -959,7 +959,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   if (astCondition->type_ == kNodeConditions) {
     pSyntaxNode root = ast->child_;
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
-    // updateÖ®ºó»¹Òªupdateindexes
+    // updateÖ®ï¿½ï¿½Òªupdateindexes
     vector<IndexInfo *> indexes;
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
@@ -977,7 +977,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           RowId n = (*tableit).GetRowId();
           if(currenttable->GetTableHeap()->UpdateTuple(row, n, txn) == false) return DB_FAILED;
           
-          // ÓÐindexes
+          // ï¿½ï¿½indexes
           if (Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes) != DB_INDEX_NOT_FOUND) {
             for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
               // if ((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
