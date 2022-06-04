@@ -382,6 +382,7 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
   
   return DB_FAILED;
 }
+
 dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currenttable,
                                         pSyntaxNode root, vector<RowId> * result) {
     Transaction *txn = NULL;
@@ -436,11 +437,16 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
           page_id_t leaf_page_id{};
           nowindex->GetIndex()->ScanKey(keyrow, scanresult, position, leaf_page_id, txn);
           BufferPoolManager *buffer_pool_manager = NULL;
-          IndexIterator<GenericKey<32>, int, GenericComparator<32>>(leaf_page_id, position,
+          IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter(leaf_page_id, position,
                                                                               buffer_pool_manager);
+          /* nowindex->Create()
+          for (indexiter; indexiter != ;indexiter++) {
+              (*indexiter).
+          }*/
       } 
       else if (root->child_->next_->type_ == kNodeNull) {
         if (strcmp(cmpoperator, "is") == 0) {
+
 
         } else if (strcmp(cmpoperator, "not") == 0) {
         }
@@ -460,7 +466,9 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
       return DB_FAILED;
     }
   }
+  return DB_FAILED;
 }
+
 CmpBool ExecuteEngine::TravelWithoutIndex(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root) {
   
     char *cmpoperator = root->val_;
@@ -474,25 +482,42 @@ CmpBool ExecuteEngine::TravelWithoutIndex(TableInfo *currenttable, TableIterator
         TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
         Field *pto{};
         if (typeop1 == kTypeInt) {
-          pto = &Field(typeop1, atoi(op2));
+          pto = new Field(typeop1, atoi(op2));
         } else if (typeop1 == kTypeFloat) {
-          pto = &Field(typeop1, (float)atof(op2));
+          pto = new Field(typeop1, (float)atof(op2));
         } else if (typeop1 == kTypeChar) {
-          pto = &Field(typeop1, op2, strlen(op2), true);
+          pto = new Field(typeop1, op2, strlen(op2), true);
         }
 
         if (strcmp(cmpoperator, "=") == 0) {
-          return now->CompareEquals(*pto);
-        } else if (strcmp(cmpoperator, ">") == 0) {
-          return now->CompareGreaterThan(*pto);
-        } else if (strcmp(cmpoperator, "<") == 0) {
-          return now->CompareLessThan(*pto);
-        } else if (strcmp(cmpoperator, "!=") == 0) {
-          return now->CompareNotEquals(*pto);
-        } else if (strcmp(cmpoperator, "<=") == 0) {
-          return now->CompareLessThanEquals(*pto);
-        } else if (strcmp(cmpoperator, ">=") == 0) {
-          return now->CompareGreaterThanEquals(*pto);
+          CmpBool returnvalue = now->CompareEquals(*pto);
+          delete pto;
+          return returnvalue;
+        } 
+        else if (strcmp(cmpoperator, ">") == 0) {
+          CmpBool returnvalue = now->CompareGreaterThan(*pto);
+          delete pto;
+          return returnvalue;
+        } 
+        else if (strcmp(cmpoperator, "<") == 0) {
+          CmpBool returnvalue = now->CompareLessThan(*pto);
+          delete pto;
+          return returnvalue;
+        } 
+        else if (strcmp(cmpoperator, "!=") == 0) {
+          CmpBool returnvalue = now->CompareNotEquals(*pto);
+          delete pto;
+          return returnvalue;
+        } 
+        else if (strcmp(cmpoperator, "<=") == 0) {
+          CmpBool returnvalue = now->CompareLessThanEquals(*pto);
+          delete pto;
+          return returnvalue;
+        } 
+        else if (strcmp(cmpoperator, ">=") == 0) {
+          CmpBool returnvalue = now->CompareGreaterThanEquals(*pto);
+          delete pto;
+          return returnvalue;
         }
       }
     } else if (root->child_->next_->type_ == kNodeNull) {
@@ -514,8 +539,9 @@ CmpBool ExecuteEngine::TravelWithoutIndex(TableInfo *currenttable, TableIterator
         }
       }
     }
-  
+    return kFalse;
 }
+
 CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root) {
   if (root->type_ == kNodeConnector) {
     if (strcmp(root->val_, "and") == 0) {
@@ -601,6 +627,7 @@ CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, p
   }
   return kFalse;
 }
+
 dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteSelect" << std::endl;
@@ -641,25 +668,22 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   // 此处开始判断条件
   if (ast->type_ == kNodeConditions) {
     pSyntaxNode root= ast->child_;
-    // 只有一个条件，用index查询
-    /* if (ast->child_->type_ == kNodeCompareOperator) {
-        // 检查该列有没有index
-      MemHeap *heap{};
-      IndexInfo *nowindex = IndexInfo::Create(heap);
-      // 存在该列的索引
-      if (Currentp->catalog_mgr_->GetIndex(currenttable->GetTableName(), ast->child_->child_->val_, nowindex) !=
-          DB_INDEX_NOT_FOUND) {
-        uint32_t cindex;
-        Schema *cschema;
-        if (currenttable->GetSchema()->GetColumnIndex(ast->child_->child_->val_, cindex) == DB_COLUMN_NAME_NOT_EXIST)
-          return DB_COLUMN_NAME_NOT_EXIST;
-        currenttable->GetSchema()->GetColumn(cindex)->GetType();
-        IndexIterator < > indexit;
-        nowindex->GetIndex()->ScanKey();
+    vector<RowId> result;
+    
+    if (NewTravel(Currentp, currenttable, root, &result) == DB_SUCCESS) {
+      for (auto i = result.begin(); i != result.end(); i++) {
+        Row nowrow(*i);
+        currenttable->GetTableHeap()->GetTuple(&nowrow, txn);
+        for (auto fielditer = columns.begin(); fielditer != columns.end(); fielditer++) {
+          uint32_t fieldid;
+          currenttable->GetSchema()->GetColumnIndex((*fielditer)->GetName(), fieldid);
+          cout << nowrow.GetField(fieldid)->GetData() << " ";
+        }
+        cout << endl;
       }
-    }*/
+    }
     // 通过迭代器查询
-    TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+    /* TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
       if (Travel(currenttable, tableit, root) == kTrue) {
@@ -677,7 +701,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         cout << "-------------" << endl;
         
       }
-    }
+    }*/
     return DB_SUCCESS;
   } 
   else if (ast == NULL) { // 没有条件
