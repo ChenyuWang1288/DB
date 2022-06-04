@@ -700,9 +700,9 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
           uint32_t fieldid;
           currenttable->GetSchema()->GetColumnIndex((*fielditer)->GetName(), fieldid);
  
-          printf("%s", nowrow.GetField(fieldid)->GetData());
+          std::cout << nowrow.GetField(fieldid)->GetData();
         }
-        cout << endl;
+        std::cout << std::endl;
       }
     }
     return DB_SUCCESS;
