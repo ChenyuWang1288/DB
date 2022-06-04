@@ -81,8 +81,10 @@ private:
 
   CmpBool Travel(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root);
 
-  /* dberr_t NewTravel(DBStorageEngine *Currentp, TableInfo *currenttable,
-                           pSyntaxNode root, vector<RowId> *result);*/
+  CmpBool TravelWithoutIndex(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root);
+
+  dberr_t NewTravel(DBStorageEngine *Currentp, TableInfo *currenttable,
+                           pSyntaxNode root, vector<RowId> *result);
 
 private:
   [[maybe_unused]] std::unordered_map<std::string, DBStorageEngine *> dbs_;  /** all opened databases */
