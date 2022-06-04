@@ -1,6 +1,7 @@
 #include "executor/execute_engine.h"
 #include "glog/logging.h"
 #include "storage/table_iterator.h"
+#include "index/index_iterator.h"
 #include <stack>
 #include <math.h>
 #include <algorithm>
@@ -381,15 +382,15 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
   
   return DB_FAILED;
 }
-/* dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currenttable,
+dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currenttable,
                                         pSyntaxNode root, vector<RowId> * result) {
+    Transaction *txn = NULL;
   if (root->type_ == kNodeConnector) {
     vector<RowId> left, right;
-    vector<RowId>::iterator iterleft;
     NewTravel(Currentp, currenttable, root->child_, &left);
     NewTravel(Currentp, currenttable, root->child_->next_, &right);
     if (strcmp(root->val_, "and") == 0) {
-      for (iterleft = left.begin(); iterleft != left.end(); iterleft++) {
+      for (auto iterleft = left.begin(); iterleft != left.end(); iterleft++) {
         if (find(right.begin(), right.end(), *iterleft) != right.end()) {
           (*result).push_back(*iterleft);
         }
@@ -401,55 +402,120 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
       sort((*result).begin(), (*result).end());
       (*result).erase(unique((*result).begin(), (*result).end()), (*result).end());
     }
+    if (!result->empty())
+        return DB_SUCCESS;
+    return DB_FAILED;
   } 
   else if (root->type_ == kNodeCompareOperator) {
     char *cmpoperator = root->val_;
     char *op1 = root->child_->val_;
+    char *op2 = root->child_->next_->val_;
     // if key 上有index
     MemHeap *heap{};
     IndexInfo *nowindex = IndexInfo::Create(heap);
     // 存在该列的索引
     if (Currentp->catalog_mgr_->GetIndex(currenttable->GetTableName(), op1, nowindex) != DB_INDEX_NOT_FOUND) {
+      vector<RowId> result;
+      if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
+        uint32_t op1index;
+          currenttable->GetSchema()->GetColumnIndex(op1, op1index);
+          TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
+          vector<Field> keyrowfield;
+          if (typeop1 == kTypeInt) {
+            keyrowfield.push_back(Field(typeop1, atoi(op2)));
+          }
+          else if (typeop1 == kTypeFloat) {
+            keyrowfield.push_back(Field(typeop1, (float)atof(op2)));
+          } 
+          else if (typeop1 == kTypeChar) {
+            keyrowfield.push_back(Field(typeop1, op2, strlen(op2), true));
+          }
+          Row keyrow(keyrowfield);
+          vector<RowId> scanresult;
+          int position{};
+          page_id_t leaf_page_id{};
+          nowindex->GetIndex()->ScanKey(keyrow, scanresult, position, leaf_page_id, txn);
+          BufferPoolManager *buffer_pool_manager = NULL;
+          IndexIterator<GenericKey<32>, int, GenericComparator<32>>(leaf_page_id, position,
+                                                                              buffer_pool_manager);
+      } 
+      else if (root->child_->next_->type_ == kNodeNull) {
+        if (strcmp(cmpoperator, "is") == 0) {
+
+        } else if (strcmp(cmpoperator, "not") == 0) {
+        }
+      }
     } 
     // 不存在该列的索引
     else {
-      if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
-        char *op2 = root->child_->next_->val_;
+      TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+      for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+           tableit++) {
+        if (TravelWithoutIndex(currenttable, tableit, root) == kTrue) {
+          (*result).push_back((*tableit).GetRowId());
+        }
+      }
+      if (!(*result).empty())
+          return DB_SUCCESS;
+      return DB_FAILED;
+    }
+  }
+}
+CmpBool ExecuteEngine::TravelWithoutIndex(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root) {
+  
+    char *cmpoperator = root->val_;
+    char *op1 = root->child_->val_;
+    if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
+      char *op2 = root->child_->next_->val_;
+      Field *now{};
+      uint32_t op1index{};
+      if (currenttable->GetSchema()->GetColumnIndex(op1, op1index)) {
+        now = (*tableit).GetField(op1index);
+        TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
+        Field *pto{};
+        if (typeop1 == kTypeInt) {
+          pto = &Field(typeop1, atoi(op2));
+        } else if (typeop1 == kTypeFloat) {
+          pto = &Field(typeop1, (float)atof(op2));
+        } else if (typeop1 == kTypeChar) {
+          pto = &Field(typeop1, op2, strlen(op2), true);
+        }
+
+        if (strcmp(cmpoperator, "=") == 0) {
+          return now->CompareEquals(*pto);
+        } else if (strcmp(cmpoperator, ">") == 0) {
+          return now->CompareGreaterThan(*pto);
+        } else if (strcmp(cmpoperator, "<") == 0) {
+          return now->CompareLessThan(*pto);
+        } else if (strcmp(cmpoperator, "!=") == 0) {
+          return now->CompareNotEquals(*pto);
+        } else if (strcmp(cmpoperator, "<=") == 0) {
+          return now->CompareLessThanEquals(*pto);
+        } else if (strcmp(cmpoperator, ">=") == 0) {
+          return now->CompareGreaterThanEquals(*pto);
+        }
+      }
+    } else if (root->child_->next_->type_ == kNodeNull) {
+      if (strcmp(cmpoperator, "is") == 0) {
+        // is null
         Field *now{};
         uint32_t op1index{};
         if (currenttable->GetSchema()->GetColumnIndex(op1, op1index)) {
           now = (*tableit).GetField(op1index);
-          TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
-          Field *pto;
-          if (typeop1 == kTypeInt) {
-            Field o(typeop1, atoi(op2));
-            pto = &o;
-          } else if (typeop1 == kTypeFloat) {
-            Field o(typeop1, (float)atof(op2));
-            pto = &o;
-          } else if (typeop1 == kTypeChar) {
-            Field o(typeop1, op2, strlen(op2), true);
-            pto = &o;
-          }
-
-          if (strcmp(cmpoperator, "=") == 0) {
-            return now->CompareEquals(*pto);
-          } else if (strcmp(cmpoperator, ">") == 0) {
-            return now->CompareGreaterThan(*pto);
-          } else if (strcmp(cmpoperator, "<") == 0) {
-            return now->CompareLessThan(*pto);
-          } else if (strcmp(cmpoperator, "!=") == 0) {
-            return now->CompareNotEquals(*pto);
-          } else if (strcmp(cmpoperator, "<=") == 0) {
-            return now->CompareLessThanEquals(*pto);
-          } else if (strcmp(cmpoperator, ">=") == 0) {
-            return now->CompareGreaterThanEquals(*pto);
-          }
+          return GetCmpBool(now->IsNull());
+        }
+      } else if (strcmp(cmpoperator, "not") == 0) {
+        // not null
+        Field *now{};
+        uint32_t op1index{};
+        if (currenttable->GetSchema()->GetColumnIndex(op1, op1index)) {
+          now = (*tableit).GetField(op1index);
+          return GetCmpBool(!(now->IsNull()));
         }
       }
     }
-  }
-}*/
+  
+}
 CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root) {
   if (root->type_ == kNodeConnector) {
     if (strcmp(root->val_, "and") == 0) {
