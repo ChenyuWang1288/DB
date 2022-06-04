@@ -130,6 +130,10 @@ public:
     return Type::GetInstance(type_id_)->CompareGreaterThanEquals(*this, o);
   }
 
+  inline TypeId GetType() const { return type_id_; }
+
+
+
   friend void Swap(Field &first, Field &second) {
     std::swap(first.value_, second.value_);
     std::swap(first.type_id_, second.type_id_);
