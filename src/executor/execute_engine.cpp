@@ -300,7 +300,7 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
       vector<IndexInfo *> indexes_;
       Currentp->catalog_mgr_->GetTableIndexes(tablename, indexes_);
       // show indexes
-      cout << "Table"
+      /*cout << "Table"
            << " "
            << "Non_unique"
            << " "
@@ -308,7 +308,7 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
            << " "
            << "Column name"
            << " "
-           << "Index_type" << endl;
+           << "Index_type" << endl;*/
       for (auto it = indexes_.begin(); it != indexes_.end(); it++) {
         cout << tablename << " ";
         IndexSchema *indexc = (*it)->GetIndexKeySchema();
