@@ -138,7 +138,10 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
 
 }
 
-CatalogManager::~CatalogManager() { delete heap_; }
+CatalogManager::~CatalogManager() {
+  FlushCatalogMetaPage();
+  delete heap_;
+}
 
 dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schema,
                                     Transaction *txn, TableInfo *&table_info) {
