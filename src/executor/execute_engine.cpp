@@ -994,6 +994,18 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
   if (ast->type_ == kNodeIdentifier) {
     if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   }
+  // 全表删除
+  if (ast->next_ == NULL) {
+    TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+    for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+         tableit++) {
+      if(currenttable->GetTableHeap()->MarkDelete((*tableit).GetRowId(), txn) == false) return DB_FAILED;
+      currenttable->GetTableHeap()->ApplyDelete((*tableit).GetRowId(), txn);
+    }
+    // 更新pagerootid
+    currenttable->SetRootPageId();
+    return DB_SUCCESS;
+  }
   ast = ast->next_; // kNodeConditions
   vector<IndexInfo *> indexes;
   Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
