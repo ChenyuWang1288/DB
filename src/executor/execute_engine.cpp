@@ -949,6 +949,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       }
       if (iter == columnindexes.end())  // 所有的field都一样
       {
+        cout << "conflict with primary key!" << endl;
         return DB_FAILED;
       }
     }
@@ -1139,7 +1140,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           if ((*columnsiter)->IsUnique()) {
             // 如果该列上有index
             for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
-              if ((*iterindexes)->GetIndexName() == (*columnsiter)->GetName()) {
+              if ((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName() == (*columnsiter)->GetName()) {
                 // 通过index找有无重复
                 vector<RowId> Scanresult;
                 
@@ -1154,6 +1155,8 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
                   cout << "对于Unique列，不应该插入重复的元组" << endl;
                   return DB_FAILED;
                 }
+                check = true;
+                break;
               }
             }
             // 如果该列上没有index，用tableiterator来检查有无重复tuple
@@ -1183,6 +1186,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
             columnindexes.push_back(tmpindex);
           }
           // 此时说明是联合主键
+          currenttable->GetTableHeap()->GetTuple(&nowrow, txn);
           TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
           for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
                tableit++) {
