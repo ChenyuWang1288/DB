@@ -430,8 +430,18 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
     char *op2 = root->child_->next_->val_;
     // if key 上有index
     IndexInfo *nowindex = nullptr;
+    vector<IndexInfo *> nowindexes;
+    string indexname;
+    Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), nowindexes);
+    for (auto m = nowindexes.begin(); m != nowindexes.end(); m++) {
+      if ((*m)->GetIndexKeySchema()->GetColumns().size() == 1) {
+        if ((*m)->GetIndexKeySchema()->GetColumn(0)->GetName() == op1) {
+          indexname = (*m)->GetIndexName();
+        }
+      }
+    }
     // 存在该列的索引
-    if (Currentp->catalog_mgr_->GetIndex(currenttable->GetTableName(), op1, nowindex) != DB_INDEX_NOT_FOUND) {
+    if (Currentp->catalog_mgr_->GetIndex(currenttable->GetTableName(), indexname, nowindex) != DB_INDEX_NOT_FOUND) {
       // vector<RowId> result;
       if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
         uint32_t op1index;
@@ -452,9 +462,8 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
           int position{};
           page_id_t leaf_page_id{};
           nowindex->GetIndex()->ScanKey(keyrow, scanresult, position, leaf_page_id, txn);
-          BufferPoolManager *buffer_pool_manager = NULL;
           IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter(leaf_page_id, position,
-                                                                              buffer_pool_manager);
+                                                                              Currentp->bpm_);
           auto indexptr =
               reinterpret_cast<BPlusTreeIndex<GenericKey<32>, RowId, GenericComparator<32>> *>((*nowindex).GetIndex());
           
@@ -874,6 +883,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   // 检查newfield是否符合插入条件
   if (row.GetFieldCount() != columns.size()) {
     cout << "Wrong Input!" << endl;
+    return DB_FAILED;
   }
   // 检查unique
   bool check = false;
@@ -992,8 +1002,11 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     if (NewTravel(Currentp, currenttable, root, &result) == DB_SUCCESS) {
       for (auto iterresult = result.begin(); iterresult != result.end(); iterresult++) {
         Row nowrow(*iterresult);
+        currenttable->GetTableHeap()->GetTuple(&nowrow, txn);
         currenttable->GetTableHeap()->MarkDelete((*iterresult), txn);
         currenttable->GetTableHeap()->ApplyDelete((*iterresult), txn);
+        // 更新pagerootid
+        currenttable->SetRootPageId();
         for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
           uint32_t keyindex;
           currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName(),
@@ -1187,6 +1200,8 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           }
         }
         if (currenttable->GetTableHeap()->UpdateTuple(previous, (*iterresult), txn) == false) return DB_FAILED;
+        // 更新rootpageid
+        currenttable->SetRootPageId();
         // 修改index
         for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
           uint32_t keyindex;
