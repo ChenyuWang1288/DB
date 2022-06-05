@@ -292,7 +292,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
     parent = p_parent;
   }
-  buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+  if (parent != nullptr) {
+    buffer_pool_manager_->UnpinPage(parent->GetPageId(), true);
+  }
 
 
   /*check if this leaf is root and if the size is less than minsize*/
