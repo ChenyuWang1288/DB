@@ -945,6 +945,8 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   }
   
   if (currenttable->GetTableHeap()->InsertTuple(row, txn)) {
+      // 更新tablemeta root_pageid
+    currenttable->SetRootPageId();
       // 检查indexex
      for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
         uint32_t keyindex;
