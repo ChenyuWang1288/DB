@@ -5,6 +5,7 @@
 #include <stack>
 #include <unordered_map>
 #include <math.h>
+#include <fstream>
 #include <algorithm>
 #include <stdio.h>
 using namespace std;
@@ -13,6 +14,17 @@ ExecuteEngine::ExecuteEngine() {
 }
 
 dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
+    // 先从文件中把database重构
+  ifstream in("databasefile.txt");
+  string databasename;
+  if (in.is_open()) {
+    while (!in.eof()) {
+      in >> databasename;
+      DBStorageEngine *db = new DBStorageEngine(databasename, false);
+      dbs_.insert(make_pair(ast->val_, db));
+    }
+    in.close();
+  }
   if (ast == nullptr) {
     return DB_FAILED;
   }
@@ -66,10 +78,29 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
   LOG(INFO) << "ExecuteCreateDatabase" << std::endl;
 #endif
   ast = ast->child_;
-  DBStorageEngine *NewDBptr = new DBStorageEngine(ast->val_);
-  dbs_.insert(make_pair(ast->val_, NewDBptr));
-  // delete NewDBptr;
-  return DB_SUCCESS;
+  // 先找以前有没有创建
+  ifstream in("databasefile.txt");
+  if (in.is_open()) {
+    string tmpdatabasename;
+    while (!in.eof()) {
+      in >> tmpdatabasename;
+      if (tmpdatabasename == ast->val_) {
+        cout << "This database already exists." << endl;
+        return DB_FAILED;
+      }
+    }
+    in.close();
+  }
+  ofstream out("databasefile.txt", ios::app);
+  if (out.is_open()) {
+    DBStorageEngine *NewDBptr = new DBStorageEngine(ast->val_);
+    dbs_.insert(make_pair(ast->val_, NewDBptr));
+    
+    out << ast->val_;
+    out << endl;
+    out.close();
+    return DB_SUCCESS;
+  }
   return DB_FAILED;
 }
 
@@ -83,10 +114,34 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
     if (it->first == ast->val_)  // 找到
     {
       DBStorageEngine *DBToDrop = it->second;
-      delete DBToDrop; // 删除这个database
-      // DBToDrop->~DBStorageEngine();
-      it = dbs_.erase(it); // 从unorderedmap中移除该dbs
-      return DB_SUCCESS;
+     
+      ifstream in("databasefile.txt");
+      ofstream outtmp("databasefiletmp.txt");
+      string tmp;
+      if (in.is_open() && outtmp.is_open()) {
+        while (!in.eof()) {
+          in >> tmp;
+          if (tmp != ast->val_) {
+            outtmp << tmp;
+            outtmp << endl;
+          }
+        }
+        in.close();
+        outtmp.close();
+        ofstream out("databasefile.txt");
+        ifstream intmp("databasefiletmp.txt");
+        if (out.is_open() && intmp.is_open()) {
+          while (!intmp.eof()) {
+            intmp >> tmp;
+            out << tmp << endl;
+          }
+          intmp.close();
+          out.close();
+          delete DBToDrop;      // 删除这个database
+          it = dbs_.erase(it);  // 从unorderedmap中移除该dbs
+          return DB_SUCCESS;
+        }
+      }
     }
   }
   return DB_FAILED;
