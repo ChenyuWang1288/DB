@@ -81,6 +81,10 @@ public:
 
   inline void CreatePrimaryKey(vector<Column> &primarykey) { this->primarykey = primarykey; }
 
+  inline void SetRootPageId() {
+    this->table_meta_->root_page_id_ = this->table_heap_->GetFirstPageId();
+  }
+
 private:
   explicit TableInfo() : heap_(new SimpleMemHeap()) {};
 
