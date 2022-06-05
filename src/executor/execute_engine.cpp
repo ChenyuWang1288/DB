@@ -1126,8 +1126,11 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
         currenttable->GetTableHeap()->GetTuple(&rowp, txn);
         Row previous = rowp;
         vector<Field *> pre = previous.GetFields();
+        
         for (auto updateiter = update.begin(); updateiter != update.end(); updateiter++) {
+          Field tmp(*updateiter);
           Swap((*updateiter), *(pre[FieldColumn[updatecolumn]]));
+          Swap((*updateiter), tmp);
           updatecolumn++;
         }
         Row nowrow(*iterresult);
@@ -1149,17 +1152,15 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
                 uint32_t keyindex;
                 currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), keyindex);
                 vector<Field> rowkeyfield;
-                rowkeyfield.push_back(*nowrow.GetField(keyindex));
+                rowkeyfield.push_back(*previous.GetField(keyindex));
                 Row rowkey(rowkeyfield);
                 if ((*iterindexes)->GetIndex()->ScanKey(rowkey, Scanresult, position, leaf_page_id, txn) == DB_SUCCESS) {
                   // if (Scanresult[0])
-                  for (auto iterresult = result.begin(); iterresult != result.end(); iterresult++) {
-                    if ((*iterresult) == Scanresult[0]) {
+                  if (*iterresult == Scanresult[0]) {
                       continue;
-                    }
-                    cout << "对于Unique列，不应该插入重复的元组" << endl;
-                    return DB_FAILED;
                   }
+                  cout << "对于Unique列，不应该插入重复的元组" << endl;
+                  return DB_FAILED;
                 }
                 check = true;
                 break;
@@ -1198,7 +1199,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
                tableit++) {
             if ((*tableit).GetRowId() == (*iterresult)) continue;
             for (iter = columnindexes.begin(); iter != columnindexes.end(); iter++) {
-              if (nowrow.GetField(*iter)->CompareEquals(*((*tableit).GetField(*iter))) != kTrue) {
+              if (previous.GetField(*iter)->CompareEquals(*((*tableit).GetField(*iter))) != kTrue) {
                 break;
               }
             }
