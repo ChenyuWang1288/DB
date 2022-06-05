@@ -454,6 +454,8 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
           BufferPoolManager *buffer_pool_manager = NULL;
           IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter(leaf_page_id, position,
                                                                               buffer_pool_manager);
+         //  auto indexiter = reinterpret_cast<BPlusTree *>((* nowindex).getindex());
+
           /* nowindex->Create()
           for (indexiter; indexiter != ;indexiter++) {
               (*indexiter).
