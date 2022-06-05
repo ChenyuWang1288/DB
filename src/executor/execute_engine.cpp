@@ -7,6 +7,7 @@
 #include <math.h>
 #include <algorithm>
 #include <stdio.h>
+using namespace std;
 ExecuteEngine::ExecuteEngine() {
 
 }
@@ -454,19 +455,74 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
           BufferPoolManager *buffer_pool_manager = NULL;
           IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter(leaf_page_id, position,
                                                                               buffer_pool_manager);
-         //  auto indexiter = reinterpret_cast<BPlusTree *>((* nowindex).getindex());
+          auto indexptr =
+              reinterpret_cast<BPlusTreeIndex<GenericKey<32>, RowId, GenericComparator<32>> *>((*nowindex).GetIndex());
+          
+          if (strcmp(cmpoperator, "=") == 0) {
+            (*result).push_back(scanresult[0]);
+            if (!(*result).empty()) return DB_SUCCESS;
+            return DB_FAILED;
+          }
+          else if (strcmp(cmpoperator, ">=") == 0) {
+            for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()){
+              (*result).push_back((*indexiter).second);
+            }
+            if (!(*result).empty()) return DB_SUCCESS;
+            return DB_FAILED;
+          } 
+          else if (strcmp(cmpoperator, ">") == 0) {
+            indexiter.operator++();
+            for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()) {
+              (*result).push_back((*indexiter).second);
+            }
+            if (!(*result).empty()) return DB_SUCCESS;
+            return DB_FAILED;
+          } 
+          else if (strcmp(cmpoperator, "<=") == 0) {
+            // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
+            IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
+            indexiter.operator++();
+            for (; indexiter2 != indexiter; indexiter2.operator++()) {
+              (*result).push_back((*indexiter2).second);
+            }
+            if (!(*result).empty()) return DB_SUCCESS;
+            return DB_FAILED;
+          } 
+          else if (strcmp(cmpoperator, "<") == 0) {
+            // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
+            IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
+            
+            for (; indexiter2 != indexiter; indexiter2.operator++()) {
+              (*result).push_back((*indexiter2).second);
+            }
+            if (!(*result).empty()) return DB_SUCCESS;
+            return DB_FAILED;
+          } 
+          else if (strcmp(cmpoperator, "!=") == 0) {
+            // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
+            IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
 
-          /* nowindex->Create()
-          for (indexiter; indexiter != ;indexiter++) {
-              (*indexiter).
-          }*/
+            for (; indexiter2 != indexiter; indexiter2.operator++()) {
+              (*result).push_back((*indexiter2).second);
+            }
+            indexiter.operator++();
+            for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()) {
+              (*result).push_back((*indexiter).second);
+            }
+            if (!(*result).empty()) return DB_SUCCESS;
+            return DB_FAILED;
+          }
       } 
       else if (root->child_->next_->type_ == kNodeNull) {
-        if (strcmp(cmpoperator, "is") == 0) {
-
-
-        } else if (strcmp(cmpoperator, "not") == 0) {
+        TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+        for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+             tableit++) {
+          if (TravelWithoutIndex(currenttable, tableit, root) == kTrue) {
+            (*result).push_back((*tableit).GetRowId());
+          }
         }
+        if (!(*result).empty()) return DB_SUCCESS;
+        return DB_FAILED;
       }
     } 
     // 不存在该列的索引
@@ -820,31 +876,45 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     cout << "Wrong Input!" << endl;
   }
   // 检查unique
+  bool check = false;
   vector<Column*> uniqueColumns;
   for (auto columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
+    check = false;
     if ((*columnsiter)->IsUnique()) {
       // 如果该列上有index
       for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
-        if ((*iterindexes)->GetIndexName() == (*columnsiter)->GetName()) {
+        if ((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName() == (*columnsiter)->GetName()) {
             // 通过index找有无重复
           vector<RowId> result;
           int position;
           page_id_t leaf_page_id;
-          if((*iterindexes)->GetIndex()->ScanKey(row, result, position, leaf_page_id, txn) == DB_SUCCESS) {
+          
+          uint32_t keyindex;
+          currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), keyindex);
+          vector<Field> rowkeyfield;
+          rowkeyfield.push_back(*row.GetField(keyindex));
+          Row rowkey(rowkeyfield);
+          if((*iterindexes)->GetIndex()->ScanKey(rowkey, result, position, leaf_page_id, txn) == DB_SUCCESS) {
+            cout << "对于Unique列，不应该插入重复的元组" << endl;
+            return DB_FAILED;
+          }
+          check = true;
+          break;
+        }
+      }
+      // 如果该列上没有index，用tableiterator来检查有无重复tuple
+      if (check == false) {
+        TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+        for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+             tableit++) {
+          uint32_t indexop1{};
+          currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), indexop1);
+          Field *currentfield = (*tableit).GetField(indexop1);
+          if (currentfield->CompareEquals(newfield[indexop1]) == kTrue) {
             cout << "对于Unique列，不应该插入重复的元组" << endl;
             return DB_FAILED;
           }
         }
-      }
-      // 如果该列上没有index，用tableiterator来检查有无重复tuple
-      TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
-      for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
-           tableit++) {
-        uint32_t indexop1{};
-        currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), indexop1);
-        Field * currentfield = (*tableit).GetField(indexop1);
-        if (currentfield->CompareEquals(newfield[indexop1]) == kTrue)
-            return DB_FAILED;
       }
     }
   }
@@ -877,7 +947,13 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   if (currenttable->GetTableHeap()->InsertTuple(row, txn)) {
       // 检查indexex
      for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
-       if((*iterindexes)->GetIndex()->InsertEntry(row, row.GetRowId(), txn) == DB_FAILED)
+        uint32_t keyindex;
+        currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName()
+                                                  , keyindex);
+        vector<Field> rowkeyfield;
+        rowkeyfield.push_back(*row.GetField(keyindex));
+        Row rowkey(rowkeyfield);
+       if((*iterindexes)->GetIndex()->InsertEntry(rowkey, row.GetRowId(), txn) == DB_FAILED)
           return DB_FAILED;
      }
     return DB_SUCCESS;
@@ -917,7 +993,13 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
         currenttable->GetTableHeap()->MarkDelete((*iterresult), txn);
         currenttable->GetTableHeap()->ApplyDelete((*iterresult), txn);
         for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
-          if ((*iterindexes)->GetIndex()->RemoveEntry(nowrow, (*iterresult), txn) == DB_FAILED) return DB_FAILED;
+          uint32_t keyindex;
+          currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName(),
+                                                    keyindex);
+          vector<Field> rowkeyfield;
+          rowkeyfield.push_back(*nowrow.GetField(keyindex));
+          Row rowkey(rowkeyfield);
+          if ((*iterindexes)->GetIndex()->RemoveEntry(rowkey, (*iterresult), txn) == DB_FAILED) return DB_FAILED;
         }
         
       }
@@ -1035,8 +1117,10 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
         Row nowrow(*iterresult);
         currenttable->GetTableHeap()->GetTuple(&nowrow, txn);
         // 检查unique约束
+        bool check = false;
         vector<Column *> uniqueColumns;
         for (auto columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
+          check = false;
           if ((*columnsiter)->IsUnique()) {
             // 如果该列上有index
             for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
@@ -1046,21 +1130,31 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
                 
                 int position;
                 page_id_t leaf_page_id;
-                if ((*iterindexes)->GetIndex()->ScanKey(nowrow, Scanresult, position, leaf_page_id, txn) == DB_SUCCESS) {
+                uint32_t keyindex;
+                currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), keyindex);
+                vector<Field> rowkeyfield;
+                rowkeyfield.push_back(*nowrow.GetField(keyindex));
+                Row rowkey(rowkeyfield);
+                if ((*iterindexes)->GetIndex()->ScanKey(rowkey, Scanresult, position, leaf_page_id, txn) == DB_SUCCESS) {
                   cout << "对于Unique列，不应该插入重复的元组" << endl;
                   return DB_FAILED;
                 }
               }
             }
             // 如果该列上没有index，用tableiterator来检查有无重复tuple
-            TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
-            for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
-                 tableit++) {
-              if ((*tableit).GetRowId() == (*iterresult)) continue;
-              uint32_t indexop1{};
-              currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), indexop1);
-              Field *currentfield = (*tableit).GetField(indexop1);
-              if (currentfield->CompareEquals(*pre[indexop1]) == kTrue) return DB_FAILED;
+            if (check == false) {
+              TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+              for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+                   tableit++) {
+                if ((*tableit).GetRowId() == (*iterresult)) continue;
+                uint32_t indexop1{};
+                currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), indexop1);
+                Field *currentfield = (*tableit).GetField(indexop1);
+                if (currentfield->CompareEquals(*pre[indexop1]) == kTrue) {
+                  cout << "对于Unique列，不应该插入重复的元组" << endl;
+                  return DB_FAILED;
+                }
+              }
             }
           }
         }
@@ -1093,9 +1187,15 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
         if (currenttable->GetTableHeap()->UpdateTuple(previous, (*iterresult), txn) == false) return DB_FAILED;
         // 修改index
         for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
-          if ((*iterindexes)->GetIndex()->RemoveEntry(previous, previous.GetRowId(), txn) == DB_FAILED)
+          uint32_t keyindex;
+          currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName(),
+                                                    keyindex);
+          vector<Field> rowkeyfield;
+          rowkeyfield.push_back(*previous.GetField(keyindex));
+          Row rowkey(rowkeyfield);
+          if ((*iterindexes)->GetIndex()->RemoveEntry(rowkey, previous.GetRowId(), txn) == DB_FAILED)
             return DB_FAILED;
-          if ((*iterindexes)->GetIndex()->InsertEntry(previous, previous.GetRowId(), txn) == DB_FAILED)
+          if ((*iterindexes)->GetIndex()->InsertEntry(rowkey, previous.GetRowId(), txn) == DB_FAILED)
             return DB_FAILED;
         }
       }
