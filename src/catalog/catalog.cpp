@@ -259,7 +259,7 @@ dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string 
   auto table_heap = index_info->GetTableInfo()->GetTableHeap();
   for (auto record_it = table_heap->Begin(nullptr); record_it != table_heap->End(); record_it++) {
     std::vector<Field> fields;
-    for (auto it_key_map = key_map.begin(); it_key_map != key_map.end(); it++) {
+    for (auto it_key_map = key_map.begin(); it_key_map != key_map.end(); it_key_map++) {
       fields.push_back(*record_it->GetField(*it_key_map));
     }
     Row key(fields);
