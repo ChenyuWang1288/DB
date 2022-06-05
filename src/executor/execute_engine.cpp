@@ -1065,7 +1065,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
         if (strchr(op2, '.') != NULL)  // float
         {
           Field tmpField(kTypeFloat, (float)atof(op2));
-          if (columns.size() > update.size() && columns[update.size()]->GetType() != kTypeFloat) {
+          if (columns.size() > update.size() && columns[op1index]->GetType() != kTypeFloat) {
             cout << "Wrong Type!" << endl;
             return DB_FAILED;
           }
@@ -1073,12 +1073,12 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
         } 
         else {  // integer or float
           Field tmpField(kTypeInt, atoi(op2));
-          if (columns.size() > update.size() && columns[update.size()]->GetType() == kTypeInt) {
+          if (columns.size() > update.size() && columns[op1index]->GetType() == kTypeInt) {
             Field tmpField(kTypeInt, atoi(op2));
             update.push_back(tmpField);
             
           } 
-          else if (columns.size() > update.size() && columns[update.size()]->GetType() == kTypeFloat) {
+          else if (columns.size() > update.size() && columns[op1index]->GetType() == kTypeFloat) {
             Field tmpField(kTypeFloat, (float)atof(op2));
             update.push_back(tmpField);
           } 
@@ -1090,7 +1090,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
       } 
       else if (ast->child_->next_->type_ == kNodeString) {
         Field tmpField(kTypeChar, op2, strlen(op2), true);
-        if (columns.size() > update.size() && columns[update.size()]->GetType() != kTypeChar) {
+        if (columns.size() > update.size() && columns[op1index]->GetType() != kTypeChar) {
           cout << "Wrong Type!" << endl;
           return DB_FAILED;
         }
@@ -1152,8 +1152,14 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
                 rowkeyfield.push_back(*nowrow.GetField(keyindex));
                 Row rowkey(rowkeyfield);
                 if ((*iterindexes)->GetIndex()->ScanKey(rowkey, Scanresult, position, leaf_page_id, txn) == DB_SUCCESS) {
-                  cout << "对于Unique列，不应该插入重复的元组" << endl;
-                  return DB_FAILED;
+                  // if (Scanresult[0])
+                  for (auto iterresult = result.begin(); iterresult != result.end(); iterresult++) {
+                    if ((*iterresult) == Scanresult[0]) {
+                      continue;
+                    }
+                    cout << "对于Unique列，不应该插入重复的元组" << endl;
+                    return DB_FAILED;
+                  }
                 }
                 check = true;
                 break;
