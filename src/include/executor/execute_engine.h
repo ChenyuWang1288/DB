@@ -87,6 +87,7 @@ private:
                            pSyntaxNode root, vector<RowId> *result);
 
 private:
+  bool isRecons;
   [[maybe_unused]] std::unordered_map<std::string, DBStorageEngine *> dbs_;  /** all opened databases */
   [[maybe_unused]] std::string current_db_;  /** current database */
 };
