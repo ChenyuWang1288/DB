@@ -140,6 +140,23 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
 
 CatalogManager::~CatalogManager() {
   FlushCatalogMetaPage();
+  /*serialize all tablemeta*/
+  for (auto tableinfo_it = tables_.begin(); tableinfo_it != tables_.end(); tableinfo_it++) {
+    Page* table_meta_page=buffer_pool_manager_->FetchPage(catalog_meta_->table_meta_pages_.find(tableinfo_it->first)->second);
+
+    TableMetadata *tablemeta = tableinfo_it->second->GetTableMeta();
+    tablemeta->SerializeTo(table_meta_page->GetData());
+    buffer_pool_manager_->UnpinPage(catalog_meta_->table_meta_pages_.find(tableinfo_it->first)->second, true);
+  }
+  /*serilize all indexmeta*/
+  for (auto indexinfo_it = indexes_.begin(); indexinfo_it != indexes_.end(); indexinfo_it++) {
+    Page *index_meta_page =
+        buffer_pool_manager_->FetchPage(catalog_meta_->index_meta_pages_.find(indexinfo_it->first)->second);
+
+    IndexMetadata *indexmeta = indexinfo_it->second->GetIndexMeta();
+    indexmeta->SerializeTo(index_meta_page->GetData());
+    buffer_pool_manager_->UnpinPage(catalog_meta_->index_meta_pages_.find(indexinfo_it->first)->second, true);
+  }
   delete heap_;
 }
 

@@ -20,7 +20,7 @@ dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
       while (!in.eof()) {
         in >> databasename;
         DBStorageEngine *db = new DBStorageEngine(databasename, false);
-        dbs_.insert(make_pair(ast->val_, db));
+        dbs_.insert(make_pair(databasename, db));
       }
       in.close();
     }
@@ -1355,8 +1355,8 @@ dberr_t ExecuteEngine::ExecuteQuit(pSyntaxNode ast, ExecuteContext *context) {
 #endif
   ASSERT(ast->type_ == kNodeQuit, "Unexpected node type.");
   context->flag_quit_ = true;
-  for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
+  /*for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     delete (*it).second;
-  }
+  }*/
   return DB_SUCCESS;
 }

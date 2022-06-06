@@ -28,7 +28,7 @@ public:
 
   inline Schema *GetSchema() const { return schema_; }
 
-
+ 
 private://初始化
   TableMetadata() = delete;
 
@@ -84,6 +84,9 @@ public:
   inline void SetRootPageId() {
     this->table_meta_->root_page_id_ = this->table_heap_->GetFirstPageId();
   }
+
+  //I add this function
+  inline TableMetadata *GetTableMeta() { return table_meta_; }
 
 private:
   explicit TableInfo() : heap_(new SimpleMemHeap()) {};
