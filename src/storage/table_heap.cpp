@@ -86,6 +86,7 @@ bool TableHeap::UpdateTuple(Row &row, RowId &rid, Transaction *txn) {
   }
   /*if the update in original rid is successful, update the rid_ of row*/
   row.SetRowId(rid);
+  buffer_pool_manager_->UnpinPage(rid.GetPageId(), true);
   return true;
 }
 
@@ -98,6 +99,7 @@ void TableHeap::ApplyDelete(const RowId &rid, Transaction *txn) {
     return;
   }
   delete_page->ApplyDelete(rid, txn, nullptr);
+  buffer_pool_manager_->UnpinPage(rid.GetPageId(), true);
 }
 
 void TableHeap::RollbackDelete(const RowId &rid, Transaction *txn) {

@@ -7,7 +7,7 @@
 
 #include "buffer/lru_replacer.h"
 #include "page/page.h"
-#include "page/disk_file_meta_page.h"
+#include "page/disk_file_meta_page.h" 
 #include "storage/disk_manager.h"
 
 using namespace std;
@@ -23,14 +23,14 @@ public:
   bool UnpinPage(page_id_t page_id, bool is_dirty);
 
   bool FlushPage(page_id_t page_id);
-  
-  void FlushAllPages();
 
   Page *NewPage(page_id_t &page_id);
 
   bool DeletePage(page_id_t page_id);
 
   bool IsPageFree(page_id_t page_id);
+
+  //bool FlushAllPages();
 
   bool CheckAllUnpinned();
 
@@ -47,6 +47,8 @@ private:
 
 
 private:
+  /*frame_id is the index of pages, page_id is logical page id*/
+ /*buffer_pool_manager is the friend class of Page*/
   size_t pool_size_;                                        // number of pages in buffer pool
   Page *pages_;                                             // array of pages
   DiskManager *disk_manager_;                               // pointer to the disk manager.

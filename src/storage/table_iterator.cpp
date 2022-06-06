@@ -14,9 +14,11 @@ TableIterator::TableIterator(Row row, TablePage *table_page, TableHeap *table_he
 
 }
 
-//TableIterator::~TableIterator() {
-//
-//}
+TableIterator::~TableIterator() {
+  if (cur_page_ != nullptr && cur_page_->GetPageId() != INVALID_PAGE_ID) {
+    table_heap_->buffer_pool_manager_->UnpinPage(cur_page_->GetPageId(), true);
+  }
+}
 /*
 bool TableIterator::operator==(const TableIterator &itr) const { return row_.GetRowId() == itr.row_.GetRowId(); }
 
@@ -37,6 +39,7 @@ TableIterator &TableIterator::operator++() {
   if (!cur_page_->GetNextTupleRid(row_.rid_, &next_rid)) {
     if (cur_page_ ->GetNextPageId()==INVALID_PAGE_ID) {
       /*this is a .end()*/
+      table_heap_->buffer_pool_manager_->UnpinPage(cur_page_->GetPageId(), true);
       row_.SetRowId(INVALID_ROWID);
       cur_page_ = nullptr;
       return *this;
@@ -48,6 +51,7 @@ TableIterator &TableIterator::operator++() {
     /*else, cur_page_ is the next page*/
     while (!cur_page_->GetFirstTupleRid(&next_rid)) {
       if (cur_page_->GetNextPageId()==INVALID_PAGE_ID) {
+        table_heap_->buffer_pool_manager_->UnpinPage(cur_page_->GetPageId(), true);
         cur_page_ = nullptr;
         row_.SetRowId(INVALID_ROWID);
         return *this;

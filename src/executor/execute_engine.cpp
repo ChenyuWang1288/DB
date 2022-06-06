@@ -15,7 +15,7 @@ ExecuteEngine::ExecuteEngine() {
 
 dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
     // 先从文件中把database重构
-  ifstream in("databasefile.txt");
+  /*ifstream in("databasefile.txt");
   string databasename;
   if (in.is_open()) {
     while (!in.eof()) {
@@ -24,7 +24,7 @@ dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
       dbs_.insert(make_pair(ast->val_, db));
     }
     in.close();
-  }
+  }*/
   if (ast == nullptr) {
     return DB_FAILED;
   }
@@ -79,7 +79,7 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
 #endif
   ast = ast->child_;
   // 先找以前有没有创建
-  ifstream in("databasefile.txt");
+  /*ifstream in("databasefile.txt");
   if (in.is_open()) {
     string tmpdatabasename;
     while (!in.eof()) {
@@ -90,7 +90,7 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
       }
     }
     in.close();
-  }
+  }*/
   ofstream out("databasefile.txt", ios::app);
   if (out.is_open()) {
     DBStorageEngine *NewDBptr = new DBStorageEngine(ast->val_);
@@ -830,7 +830,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   } 
   else if (ast == NULL) { // 没有条件
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
-    for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+    for (/*tableit == currenttable->GetTableHeap()->Begin(txn)*/; tableit != currenttable->GetTableHeap()->End();
          tableit++) {
       // 打印
       Row row((*tableit).GetRowId());

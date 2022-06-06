@@ -18,8 +18,8 @@ public:
   explicit TableIterator(Row row, TablePage *table_page, TableHeap *table_heap, Transaction *txn);
 
   explicit TableIterator(const TableIterator &other);
-  /*I delete the virtual destructor */
-  //~TableIterator();
+  
+  ~TableIterator();
 
   inline bool operator==(const TableIterator &itr) const { return row_.GetRowId() == itr.row_.GetRowId(); }
 
