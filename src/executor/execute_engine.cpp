@@ -1,18 +1,24 @@
 #include "executor/execute_engine.h"
-#include "glog/logging.h"
-#include "storage/table_iterator.h"
-#include "index/index_iterator.h"
+#include <math.h>
+#include <stdio.h>
+#include <algorithm>
+#include <fstream>
 #include <stack>
 #include <unordered_map>
-#include <math.h>
-#include <fstream>
-#include <algorithm>
-#include <stdio.h>
+#include "glog/logging.h"
+#include "index/index_iterator.h"
+#include "storage/table_iterator.h"
 using namespace std;
+extern "C" {
+int yyparse(void);
+extern FILE *yyin;
+#include "parser/minisql_lex.h"
+#include "parser/parser.h"
+}
 ExecuteEngine::ExecuteEngine() { isRecons = false; }
 
 dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
-    // 先从文件中把database重构
+  // 先从文件中把database重构
   if (isRecons == false) {
     ifstream in("databasefile.txt");
     string databasename;
@@ -96,7 +102,7 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
   if (out.is_open()) {
     DBStorageEngine *NewDBptr = new DBStorageEngine(ast->val_);
     dbs_.insert(make_pair(ast->val_, NewDBptr));
-    
+
     out << ast->val_;
     out << endl;
     out.close();
@@ -115,7 +121,7 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
     if (it->first == ast->val_)  // 找到
     {
       DBStorageEngine *DBToDrop = it->second;
-     
+
       ifstream in("databasefile.txt");
       ofstream outtmp("databasefiletmp.txt");
       string tmp;
@@ -156,7 +162,7 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
   cout << "Database:" << endl;
   if (dbs_.empty())  // 此时没有数据库
   {
-    cout << "No database."<< endl;
+    cout << "No database." << endl;
     return DB_FAILED;
   }
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
@@ -174,7 +180,7 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
     if (it->first == ast->val_)  // 找到
     {
-      current_db_ = ast->val_; // 作为current database
+      current_db_ = ast->val_;  // 作为current database
       return DB_SUCCESS;
     }
   }
@@ -212,7 +218,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 #endif
   TableInfo *Newtable_info = NULL;
   Transaction *txn = NULL;
-  
+
   ast = ast->child_;
   string NewTableName = ast->val_;
   vector<Column *> NewColumns;
@@ -232,29 +238,26 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   vector<Column> primarykey;
   ast = ast->next_;  // ast type kNodeColumnDefinitionList
   if (ast->type_ == kNodeColumnDefinitionList) {
-    ast = ast->child_; // 遍历生成column的pSyntaxNode
+    ast = ast->child_;  // 遍历生成column的pSyntaxNode
     while (ast != NULL) {
       uniqueable = false;
       pSyntaxNode tmp = ast;
       if (ast->type_ == kNodeColumnDefinition) {
         tmp = tmp->child_;
-        if (ast->val_ != NULL && strcmp(ast->val_ ,"unique")==0) uniqueable = true;
-        if (tmp->type_ == kNodeIdentifier) // column name
+        if (ast->val_ != NULL && strcmp(ast->val_, "unique") == 0) uniqueable = true;
+        if (tmp->type_ == kNodeIdentifier)  // column name
         {
-          if (strcmp(tmp->next_->val_ ,"int") == 0) {
+          if (strcmp(tmp->next_->val_, "int") == 0) {
             newtype = kTypeInt;
             // Column newcol(tmp->val_, newtype, indexnum, nullable, uniqueable);
-            Column *newcolptr =
-                new Column(tmp->val_, newtype, indexnum, nullable, uniqueable);
+            Column *newcolptr = new Column(tmp->val_, newtype, indexnum, nullable, uniqueable);
             NewColumns.push_back(newcolptr);
-          } 
-          else if (strcmp(tmp->next_->val_, "float")==0) {
+          } else if (strcmp(tmp->next_->val_, "float") == 0) {
             newtype = kTypeFloat;
             // Column newcol(tmp->val_, newtype, indexnum, nullable, uniqueable);
             Column *newcolptr = new Column(tmp->val_, newtype, indexnum, nullable, uniqueable);
             NewColumns.push_back(newcolptr);
-          } 
-          else if (strcmp(tmp->next_->val_, "char")==0) {
+          } else if (strcmp(tmp->next_->val_, "char") == 0) {
             newtype = kTypeChar;
             float l = atof(tmp->next_->child_->val_);
             // 此处应该增加约束条件
@@ -274,9 +277,8 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
           }
           indexnum++;
         }
-      } 
-      else if (ast->type_ == kNodeColumnList) {
-        if (strcmp(ast->val_, "primary keys")==0) {
+      } else if (ast->type_ == kNodeColumnList) {
+        if (strcmp(ast->val_, "primary keys") == 0) {
           tmp = ast->child_;
           while (tmp != NULL) {
             if (tmp->type_ == kNodeIdentifier) {
@@ -296,7 +298,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     }
     // TableSchema NewSchema(NewColumns);
     // TableSchema *p = new
-    TableSchema* NewSchema= ALLOC_P(Currentp->catalog_mgr_->GetHeap(), TableSchema)(NewColumns);
+    TableSchema *NewSchema = ALLOC_P(Currentp->catalog_mgr_->GetHeap(), TableSchema)(NewColumns);
     if (Currentp->catalog_mgr_->CreateTable(NewTableName, NewSchema, txn, Newtable_info) == DB_SUCCESS) {
       // MemHeap *heap{};
       TableInfo *currenttable{};
@@ -309,7 +311,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       }
       return DB_SUCCESS;
     }
-    
+
     return DB_FAILED;
   }
   return DB_FAILED;
@@ -341,15 +343,14 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
   LOG(INFO) << "ExecuteShowIndexes" << std::endl;
 #endif
   DBStorageEngine *Currentp;
-  vector<TableInfo*> tables;
+  vector<TableInfo *> tables;
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_) 
-    {
+    if (it->first == current_db_) {
       Currentp = it->second;
       break;
     }
   }
-  Currentp->catalog_mgr_->GetTables(tables); // 把该db中的table放入tables
+  Currentp->catalog_mgr_->GetTables(tables);  // 把该db中的table放入tables
   if (ast->type_ == kNodeShowIndexes) {
     for (auto iter = tables.begin(); iter != tables.end(); iter++) {
       string tablename = (*iter)->GetTableName();
@@ -368,7 +369,7 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
       for (auto it = indexes_.begin(); it != indexes_.end(); it++) {
         cout << tablename << " ";
         IndexSchema *indexc = (*it)->GetIndexKeySchema();
-        vector<Column*> indexcolumns = indexc->GetColumns();
+        vector<Column *> indexcolumns = indexc->GetColumns();
         for (auto i = indexcolumns.begin(); i != indexcolumns.end(); i++) {
           cout << (*i)->GetName() << " ";
         }
@@ -392,8 +393,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   vector<string> indexkeys;
   IndexInfo *index_info = NULL;
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)
-    {
+    if (it->first == current_db_) {
       Currentp = it->second;
       break;
     }
@@ -412,7 +412,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   }
 
   return Currentp->catalog_mgr_->CreateIndex(tablename, indexname, indexkeys, txn, index_info);
-  
+
   return DB_FAILED;
 }
 
@@ -422,8 +422,7 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
 #endif
   DBStorageEngine *Currentp;
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)
-    {
+    if (it->first == current_db_) {
       Currentp = it->second;
       break;
     }
@@ -443,14 +442,13 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
     }
   }
   return DB_INDEX_NOT_FOUND;
-  
+
   return DB_FAILED;
 }
 
-
-dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currenttable,
-                                        pSyntaxNode root, vector<RowId> * result) {
-    Transaction *txn = NULL;
+dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currenttable, pSyntaxNode root,
+                                 vector<RowId> *result) {
+  Transaction *txn = NULL;
   if (root->type_ == kNodeConnector) {
     vector<RowId> left, right;
     vector<RowId>::iterator iterright;
@@ -462,25 +460,22 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
           (*result).push_back(*iterleft);
         }
       }
-    } 
-    else if (strcmp(root->val_, "or") == 0) {
+    } else if (strcmp(root->val_, "or") == 0) {
       (*result).insert((*result).end(), left.begin(), left.end());
       (*result).insert((*result).end(), right.begin(), right.end());
-      
+
       for (auto resultit = (*result).begin(); resultit != (*result).end(); resultit++) {
         for (auto i2 = resultit + 1; i2 != (*result).end(); i2++) {
           if ((*i2) == (*resultit)) {
             (*result).erase(i2);
-              break;
+            break;
           }
         }
       }
     }
-    if (!result->empty())
-        return DB_SUCCESS;
+    if (!result->empty()) return DB_SUCCESS;
     return DB_FAILED;
-  } 
-  else if (root->type_ == kNodeCompareOperator) {
+  } else if (root->type_ == kNodeCompareOperator) {
     char *cmpoperator = root->val_;
     char *op1 = root->child_->val_;
     char *op2 = root->child_->next_->val_;
@@ -501,84 +496,75 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
       // vector<RowId> result;
       if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
         uint32_t op1index;
-          currenttable->GetSchema()->GetColumnIndex(op1, op1index);
-          TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
-          vector<Field> keyrowfield;
-          if (typeop1 == kTypeInt) {
-            keyrowfield.push_back(Field(typeop1, atoi(op2)));
-          }
-          else if (typeop1 == kTypeFloat) {
-            keyrowfield.push_back(Field(typeop1, (float)atof(op2)));
-          } 
-          else if (typeop1 == kTypeChar) {
-            keyrowfield.push_back(Field(typeop1, op2, strlen(op2), true));
-          }
-          Row keyrow(keyrowfield);
-          vector<RowId> scanresult;
-          int position{};
-          page_id_t leaf_page_id{};
-          nowindex->GetIndex()->ScanKey(keyrow, scanresult, position, leaf_page_id, txn);
-          IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter(leaf_page_id, position,
-                                                                              Currentp->bpm_);
-          auto indexptr =
-              reinterpret_cast<BPlusTreeIndex<GenericKey<32>, RowId, GenericComparator<32>> *>((*nowindex).GetIndex());
-          
-          if (strcmp(cmpoperator, "=") == 0) {
-            (*result).push_back(scanresult[0]);
-            if (!(*result).empty()) return DB_SUCCESS;
-            return DB_FAILED;
-          }
-          else if (strcmp(cmpoperator, ">=") == 0) {
-            for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()){
-              (*result).push_back((*indexiter).second);
-            }
-            if (!(*result).empty()) return DB_SUCCESS;
-            return DB_FAILED;
-          } 
-          else if (strcmp(cmpoperator, ">") == 0) {
-            indexiter.operator++();
-            for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()) {
-              (*result).push_back((*indexiter).second);
-            }
-            if (!(*result).empty()) return DB_SUCCESS;
-            return DB_FAILED;
-          } 
-          else if (strcmp(cmpoperator, "<=") == 0) {
-            // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
-            IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
-            indexiter.operator++();
-            for (; indexiter2 != indexiter; indexiter2.operator++()) {
-              (*result).push_back((*indexiter2).second);
-            }
-            if (!(*result).empty()) return DB_SUCCESS;
-            return DB_FAILED;
-          } 
-          else if (strcmp(cmpoperator, "<") == 0) {
-            // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
-            IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
-            
-            for (; indexiter2 != indexiter; indexiter2.operator++()) {
-              (*result).push_back((*indexiter2).second);
-            }
-            if (!(*result).empty()) return DB_SUCCESS;
-            return DB_FAILED;
-          } 
-          else if (strcmp(cmpoperator, "!=") == 0) {
-            // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
-            IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
+        currenttable->GetSchema()->GetColumnIndex(op1, op1index);
+        TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
+        vector<Field> keyrowfield;
+        if (typeop1 == kTypeInt) {
+          keyrowfield.push_back(Field(typeop1, atoi(op2)));
+        } else if (typeop1 == kTypeFloat) {
+          keyrowfield.push_back(Field(typeop1, (float)atof(op2)));
+        } else if (typeop1 == kTypeChar) {
+          keyrowfield.push_back(Field(typeop1, op2, strlen(op2), true));
+        }
+        Row keyrow(keyrowfield);
+        vector<RowId> scanresult;
+        int position{};
+        page_id_t leaf_page_id{};
+        nowindex->GetIndex()->ScanKey(keyrow, scanresult, position, leaf_page_id, txn);
+        IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter(leaf_page_id, position, Currentp->bpm_);
+        auto indexptr =
+            reinterpret_cast<BPlusTreeIndex<GenericKey<32>, RowId, GenericComparator<32>> *>((*nowindex).GetIndex());
 
-            for (; indexiter2 != indexiter; indexiter2.operator++()) {
-              (*result).push_back((*indexiter2).second);
-            }
-            indexiter.operator++();
-            for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()) {
-              (*result).push_back((*indexiter).second);
-            }
-            if (!(*result).empty()) return DB_SUCCESS;
-            return DB_FAILED;
+        if (strcmp(cmpoperator, "=") == 0) {
+          (*result).push_back(scanresult[0]);
+          if (!(*result).empty()) return DB_SUCCESS;
+          return DB_FAILED;
+        } else if (strcmp(cmpoperator, ">=") == 0) {
+          for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()) {
+            (*result).push_back((*indexiter).second);
           }
-      } 
-      else if (root->child_->next_->type_ == kNodeNull) {
+          if (!(*result).empty()) return DB_SUCCESS;
+          return DB_FAILED;
+        } else if (strcmp(cmpoperator, ">") == 0) {
+          indexiter.operator++();
+          for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()) {
+            (*result).push_back((*indexiter).second);
+          }
+          if (!(*result).empty()) return DB_SUCCESS;
+          return DB_FAILED;
+        } else if (strcmp(cmpoperator, "<=") == 0) {
+          // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
+          IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
+          indexiter.operator++();
+          for (; indexiter2 != indexiter; indexiter2.operator++()) {
+            (*result).push_back((*indexiter2).second);
+          }
+          if (!(*result).empty()) return DB_SUCCESS;
+          return DB_FAILED;
+        } else if (strcmp(cmpoperator, "<") == 0) {
+          // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
+          IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
+
+          for (; indexiter2 != indexiter; indexiter2.operator++()) {
+            (*result).push_back((*indexiter2).second);
+          }
+          if (!(*result).empty()) return DB_SUCCESS;
+          return DB_FAILED;
+        } else if (strcmp(cmpoperator, "!=") == 0) {
+          // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
+          IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
+
+          for (; indexiter2 != indexiter; indexiter2.operator++()) {
+            (*result).push_back((*indexiter2).second);
+          }
+          indexiter.operator++();
+          for (; indexiter != indexptr->GetEndIterator(); indexiter.operator++()) {
+            (*result).push_back((*indexiter).second);
+          }
+          if (!(*result).empty()) return DB_SUCCESS;
+          return DB_FAILED;
+        }
+      } else if (root->child_->next_->type_ == kNodeNull) {
         TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
         for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
              tableit++) {
@@ -589,7 +575,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
         if (!(*result).empty()) return DB_SUCCESS;
         return DB_FAILED;
       }
-    } 
+    }
     // 不存在该列的索引
     else {
       TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
@@ -599,8 +585,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
           (*result).push_back((*tableit).GetRowId());
         }
       }
-      if (!(*result).empty())
-          return DB_SUCCESS;
+      if (!(*result).empty()) return DB_SUCCESS;
       return DB_FAILED;
     }
   }
@@ -608,83 +593,76 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
 }
 
 CmpBool ExecuteEngine::TravelWithoutIndex(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root) {
-  
-    char *cmpoperator = root->val_;
-    char *op1 = root->child_->val_;
-    if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
-      char *op2 = root->child_->next_->val_;
+  char *cmpoperator = root->val_;
+  char *op1 = root->child_->val_;
+  if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
+    char *op2 = root->child_->next_->val_;
+    Field *now{};
+    uint32_t op1index{};
+    if (currenttable->GetSchema()->GetColumnIndex(op1, op1index) == DB_SUCCESS) {
+      now = (*tableit).GetField(op1index);
+      TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
+      Field *pto{};
+      if (typeop1 == kTypeInt) {
+        pto = new Field(typeop1, atoi(op2));
+      } else if (typeop1 == kTypeFloat) {
+        pto = new Field(typeop1, (float)atof(op2));
+      } else if (typeop1 == kTypeChar) {
+        pto = new Field(typeop1, op2, strlen(op2), true);
+      }
+
+      if (strcmp(cmpoperator, "=") == 0) {
+        CmpBool returnvalue = now->CompareEquals(*pto);
+        delete pto;
+        return returnvalue;
+      } else if (strcmp(cmpoperator, ">") == 0) {
+        CmpBool returnvalue = now->CompareGreaterThan(*pto);
+        delete pto;
+        return returnvalue;
+      } else if (strcmp(cmpoperator, "<") == 0) {
+        CmpBool returnvalue = now->CompareLessThan(*pto);
+        delete pto;
+        return returnvalue;
+      } else if (strcmp(cmpoperator, "!=") == 0) {
+        CmpBool returnvalue = now->CompareNotEquals(*pto);
+        delete pto;
+        return returnvalue;
+      } else if (strcmp(cmpoperator, "<=") == 0) {
+        CmpBool returnvalue = now->CompareLessThanEquals(*pto);
+        delete pto;
+        return returnvalue;
+      } else if (strcmp(cmpoperator, ">=") == 0) {
+        CmpBool returnvalue = now->CompareGreaterThanEquals(*pto);
+        delete pto;
+        return returnvalue;
+      }
+    }
+    cout << "Wrong column name!" << endl;
+    return kFalse;
+  } else if (root->child_->next_->type_ == kNodeNull) {
+    if (strcmp(cmpoperator, "is") == 0) {
+      // is null
       Field *now{};
       uint32_t op1index{};
       if (currenttable->GetSchema()->GetColumnIndex(op1, op1index) == DB_SUCCESS) {
         now = (*tableit).GetField(op1index);
-        TypeId typeop1 = currenttable->GetSchema()->GetColumn(op1index)->GetType();
-        Field *pto{};
-        if (typeop1 == kTypeInt) {
-          pto = new Field(typeop1, atoi(op2));
-        } else if (typeop1 == kTypeFloat) {
-          pto = new Field(typeop1, (float)atof(op2));
-        } else if (typeop1 == kTypeChar) {
-          pto = new Field(typeop1, op2, strlen(op2), true);
-        }
-
-        if (strcmp(cmpoperator, "=") == 0) {
-          CmpBool returnvalue = now->CompareEquals(*pto);
-          delete pto;
-          return returnvalue;
-        } 
-        else if (strcmp(cmpoperator, ">") == 0) {
-          CmpBool returnvalue = now->CompareGreaterThan(*pto);
-          delete pto;
-          return returnvalue;
-        } 
-        else if (strcmp(cmpoperator, "<") == 0) {
-          CmpBool returnvalue = now->CompareLessThan(*pto);
-          delete pto;
-          return returnvalue;
-        } 
-        else if (strcmp(cmpoperator, "!=") == 0) {
-          CmpBool returnvalue = now->CompareNotEquals(*pto);
-          delete pto;
-          return returnvalue;
-        } 
-        else if (strcmp(cmpoperator, "<=") == 0) {
-          CmpBool returnvalue = now->CompareLessThanEquals(*pto);
-          delete pto;
-          return returnvalue;
-        } 
-        else if (strcmp(cmpoperator, ">=") == 0) {
-          CmpBool returnvalue = now->CompareGreaterThanEquals(*pto);
-          delete pto;
-          return returnvalue;
-        }
+        return GetCmpBool(now->IsNull());
       }
       cout << "Wrong column name!" << endl;
       return kFalse;
-    } else if (root->child_->next_->type_ == kNodeNull) {
-      if (strcmp(cmpoperator, "is") == 0) {
-        // is null
-        Field *now{};
-        uint32_t op1index{};
-        if (currenttable->GetSchema()->GetColumnIndex(op1, op1index) == DB_SUCCESS) {
-          now = (*tableit).GetField(op1index);
-          return GetCmpBool(now->IsNull());
-        }
-        cout << "Wrong column name!" << endl;
-        return kFalse;
-      } 
-      else if (strcmp(cmpoperator, "not") == 0) {
-        // not null
-        Field *now{};
-        uint32_t op1index{};
-        if (currenttable->GetSchema()->GetColumnIndex(op1, op1index) == DB_SUCCESS) {
-          now = (*tableit).GetField(op1index);
-          return GetCmpBool(!(now->IsNull()));
-        }
-        cout << "Wrong column name!" << endl;
-        return kFalse;
+    } else if (strcmp(cmpoperator, "not") == 0) {
+      // not null
+      Field *now{};
+      uint32_t op1index{};
+      if (currenttable->GetSchema()->GetColumnIndex(op1, op1index) == DB_SUCCESS) {
+        now = (*tableit).GetField(op1index);
+        return GetCmpBool(!(now->IsNull()));
       }
+      cout << "Wrong column name!" << endl;
+      return kFalse;
     }
-    return kFalse;
+  }
+  return kFalse;
 }
 
 CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, pSyntaxNode root) {
@@ -694,16 +672,14 @@ CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, p
           Travel(currenttable, tableit, root->child_->next_) == kTrue)
         return kTrue;
       return kFalse;
-    } 
-    else if (strcmp(root->val_, "or") == 0) {
+    } else if (strcmp(root->val_, "or") == 0) {
       if (Travel(currenttable, tableit, root->child_) == kTrue ||
           Travel(currenttable, tableit, root->child_->next_) == kTrue)
         return kTrue;
       return kFalse;
     }
-    return kFalse; // 可能还有别的Connector吧不管了现在这边返回一下
-  } 
-  else if (root->type_ == kNodeCompareOperator) {
+    return kFalse;  // 可能还有别的Connector吧不管了现在这边返回一下
+  } else if (root->type_ == kNodeCompareOperator) {
     char *cmpoperator = root->val_;
     char *op1 = root->child_->val_;
     if (root->child_->next_->type_ == kNodeNumber || root->child_->next_->type_ == kNodeString) {
@@ -717,37 +693,29 @@ CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, p
         if (typeop1 == kTypeInt) {
           Field o(typeop1, atoi(op2));
           pto = &o;
-        } 
-        else if (typeop1 == kTypeFloat) {
+        } else if (typeop1 == kTypeFloat) {
           Field o(typeop1, (float)atof(op2));
           pto = &o;
-        } 
-        else if (typeop1 == kTypeChar) {
+        } else if (typeop1 == kTypeChar) {
           Field o(typeop1, op2, strlen(op2), true);
           pto = &o;
         }
-        
+
         if (strcmp(cmpoperator, "=") == 0) {
           return now->CompareEquals(*pto);
-        } 
-        else if (strcmp(cmpoperator, ">") == 0) {
+        } else if (strcmp(cmpoperator, ">") == 0) {
           return now->CompareGreaterThan(*pto);
-        } 
-        else if (strcmp(cmpoperator, "<") == 0) {
+        } else if (strcmp(cmpoperator, "<") == 0) {
           return now->CompareLessThan(*pto);
-        } 
-        else if (strcmp(cmpoperator, "!=") == 0) {
+        } else if (strcmp(cmpoperator, "!=") == 0) {
           return now->CompareNotEquals(*pto);
-        } 
-        else if (strcmp(cmpoperator, "<=") == 0) {
+        } else if (strcmp(cmpoperator, "<=") == 0) {
           return now->CompareLessThanEquals(*pto);
-        } 
-        else if (strcmp(cmpoperator, ">=") == 0) {
+        } else if (strcmp(cmpoperator, ">=") == 0) {
           return now->CompareGreaterThanEquals(*pto);
         }
       }
-    } 
-    else if (root->child_->next_->type_ == kNodeNull) {
+    } else if (root->child_->next_->type_ == kNodeNull) {
       if (strcmp(cmpoperator, "is") == 0) {
         // is null
         Field *now{};
@@ -756,8 +724,7 @@ CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, p
           now = (*tableit).GetField(op1index);
           return GetCmpBool(now->IsNull());
         }
-      } 
-      else if (strcmp(cmpoperator, "not") == 0) {
+      } else if (strcmp(cmpoperator, "not") == 0) {
         // not null
         Field *now{};
         uint32_t op1index{};
@@ -767,8 +734,6 @@ CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, p
         }
       }
     }
-
-    
   }
   return kFalse;
 }
@@ -785,20 +750,17 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   vector<Column *> columns;
   Transaction *txn{};
   for (auto it = dbs_.begin(); it != dbs_.end(); it++) {
-    if (it->first == current_db_)
-    {
+    if (it->first == current_db_) {
       Currentp = it->second;
       break;
     }
   }
-  if(Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST)
-      return DB_TABLE_NOT_EXIST;
+  if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   Schema *columnToSelect = currenttable->GetSchema();
   /* 把要找的column放到columns里 */
   if (tmp->type_ == kNodeAllColumns) {
     columns = columnToSelect->GetColumns();
-  } 
-  else if (tmp->type_ == kNodeColumnList) {
+  } else if (tmp->type_ == kNodeColumnList) {
     tmp = tmp->child_;
     while (tmp) {
       uint32_t columnindex = 0;
@@ -806,14 +768,14 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         return DB_COLUMN_NAME_NOT_EXIST;
       columns.push_back(columnToSelect->GetColumn(columnindex));
       tmp = tmp->next_;
-    } 
+    }
   }
   ast = ast->next_;
   // 此处开始判断条件
   if (ast != NULL && ast->type_ == kNodeConditions) {
-    pSyntaxNode root= ast->child_;
+    pSyntaxNode root = ast->child_;
     vector<RowId> result;
-    
+
     if (NewTravel(Currentp, currenttable, root, &result) == DB_SUCCESS) {
       for (auto i = result.begin(); i != result.end(); i++) {
         Row nowrow(*i);
@@ -821,15 +783,14 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         for (auto fielditer = columns.begin(); fielditer != columns.end(); fielditer++) {
           uint32_t fieldid;
           currenttable->GetSchema()->GetColumnIndex((*fielditer)->GetName(), fieldid);
- 
+
           std::cout << nowrow.GetField(fieldid)->GetData();
         }
         std::cout << std::endl;
       }
     }
     return DB_SUCCESS;
-  } 
-  else if (ast == NULL) { // 没有条件
+  } else if (ast == NULL) {  // 没有条件
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (/*tableit == currenttable->GetTableHeap()->Begin(txn)*/; tableit != currenttable->GetTableHeap()->End();
          tableit++) {
@@ -844,12 +805,12 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         if (tmpField->IsNull())
           cout << "null"
                << " ";
-        else cout << tmpField->GetData() << " ";
+        else
+          cout << tmpField->GetData() << " ";
       }
       // row.GetField();
       cout << endl;
       cout << "-------------" << endl;
-      
     }
     return DB_SUCCESS;
   }
@@ -875,50 +836,44 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   ast = ast->child_;
   /* 找到要被插入的表 */
   if (ast->type_ == kNodeIdentifier) {
-    if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) 
-        return DB_TABLE_NOT_EXIST;
+    if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   }
-  ast = ast->next_; // kColumnValues
+  ast = ast->next_;  // kColumnValues
   ast = ast->child_;
   vector<Field> newfield;
   vector<Column *> columns = currenttable->GetSchema()->GetColumns();
   while (ast != NULL) {
-    //Field tmpField()
+    // Field tmpField()
     if (ast->type_ == kNodeNumber) {
       if (strchr(ast->val_, '.') != NULL)  // float
       {
         Field tmpField(kTypeFloat, (float)atof(ast->val_));
-        if(columns.size() > newfield.size() && columns[newfield.size()]->GetType() != kTypeFloat) {
+        if (columns.size() > newfield.size() && columns[newfield.size()]->GetType() != kTypeFloat) {
           cout << "Wrong Type!" << endl;
           return DB_FAILED;
         }
         newfield.push_back(tmpField);
-      } 
-      else { // integer or float
-        
+      } else {  // integer or float
+
         if (columns.size() > newfield.size() && columns[newfield.size()]->GetType() == kTypeInt) {
           Field tmpField(kTypeInt, atoi(ast->val_));
           newfield.push_back(tmpField);
-        }
-        else if (columns.size() > newfield.size() && columns[newfield.size()]->GetType() == kTypeFloat) {
+        } else if (columns.size() > newfield.size() && columns[newfield.size()]->GetType() == kTypeFloat) {
           Field tmpField(kTypeFloat, (float)atoi(ast->val_));
           newfield.push_back(tmpField);
-        } 
-        else {
+        } else {
           cout << "Wrong Type!" << endl;
           return DB_FAILED;
         }
       }
-    } 
-    else if (ast->type_ == kNodeString) {
+    } else if (ast->type_ == kNodeString) {
       Field tmpField(kTypeChar, ast->val_, strlen(ast->val_), true);
       if (columns.size() > newfield.size() && columns[newfield.size()]->GetType() != kTypeChar) {
         cout << "Wrong Type!" << endl;
         return DB_FAILED;
       }
       newfield.push_back(tmpField);
-    } 
-    else if (ast->type_ == kNodeNull) {
+    } else if (ast->type_ == kNodeNull) {
       if (ast->id_ > (int)columns.size()) {
         cout << "Wrong Columns num!" << endl;
         return DB_FAILED;
@@ -943,24 +898,24 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   }
   // 检查unique
   bool check = false;
-  vector<Column*> uniqueColumns;
+  vector<Column *> uniqueColumns;
   for (auto columnsiter = columns.begin(); columnsiter != columns.end(); columnsiter++) {
     check = false;
     if ((*columnsiter)->IsUnique()) {
       // 如果该列上有index
       for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
         if ((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName() == (*columnsiter)->GetName()) {
-            // 通过index找有无重复
+          // 通过index找有无重复
           vector<RowId> result;
           int position;
           page_id_t leaf_page_id;
-          
+
           uint32_t keyindex;
           currenttable->GetSchema()->GetColumnIndex((*columnsiter)->GetName(), keyindex);
           vector<Field> rowkeyfield;
           rowkeyfield.push_back(*row.GetField(keyindex));
           Row rowkey(rowkeyfield);
-          if((*iterindexes)->GetIndex()->ScanKey(rowkey, result, position, leaf_page_id, txn) == DB_SUCCESS) {
+          if ((*iterindexes)->GetIndex()->ScanKey(rowkey, result, position, leaf_page_id, txn) == DB_SUCCESS) {
             cout << "对于Unique列，不应该插入重复的元组" << endl;
             return DB_FAILED;
           }
@@ -994,7 +949,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       currenttable->GetSchema()->GetColumnIndex((*piter).GetName(), tmpindex);
       columnindexes.push_back(tmpindex);
     }
-      // 此时说明是联合主键
+    // 此时说明是联合主键
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
@@ -1010,21 +965,19 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       }
     }
   }
-  
+
   if (currenttable->GetTableHeap()->InsertTuple(row, txn)) {
-      // 更新tablemeta root_pageid
+    // 更新tablemeta root_pageid
     currenttable->SetRootPageId();
-      // 检查indexex
-     for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
-        uint32_t keyindex;
-        currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName()
-                                                  , keyindex);
-        vector<Field> rowkeyfield;
-        rowkeyfield.push_back(*row.GetField(keyindex));
-        Row rowkey(rowkeyfield);
-       if((*iterindexes)->GetIndex()->InsertEntry(rowkey, row.GetRowId(), txn) == DB_FAILED)
-          return DB_FAILED;
-     }
+    // 检查indexex
+    for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+      uint32_t keyindex;
+      currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName(), keyindex);
+      vector<Field> rowkeyfield;
+      rowkeyfield.push_back(*row.GetField(keyindex));
+      Row rowkey(rowkeyfield);
+      if ((*iterindexes)->GetIndex()->InsertEntry(rowkey, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
+    }
     return DB_SUCCESS;
   }
   return DB_FAILED;
@@ -1055,14 +1008,14 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
     for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
          tableit++) {
-      if(currenttable->GetTableHeap()->MarkDelete((*tableit).GetRowId(), txn) == false) return DB_FAILED;
+      if (currenttable->GetTableHeap()->MarkDelete((*tableit).GetRowId(), txn) == false) return DB_FAILED;
       currenttable->GetTableHeap()->ApplyDelete((*tableit).GetRowId(), txn);
     }
     // 更新pagerootid
     currenttable->SetRootPageId();
     return DB_SUCCESS;
   }
-  ast = ast->next_; // kNodeConditions
+  ast = ast->next_;  // kNodeConditions
   vector<IndexInfo *> indexes;
   Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
   if (ast->type_ == kNodeConditions) {
@@ -1085,7 +1038,6 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
           Row rowkey(rowkeyfield);
           if ((*iterindexes)->GetIndex()->RemoveEntry(rowkey, (*iterresult), txn) == DB_FAILED) return DB_FAILED;
         }
-        
       }
       return DB_SUCCESS;
     }
@@ -1117,7 +1069,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   vector<uint32_t> FieldColumn;
   vector<Column *> columns = currenttable->GetSchema()->GetColumns();
   int updatecolumn = 0;
-  ast = ast->next_; // kNodeUpdateValues
+  ast = ast->next_;  // kNodeUpdateValues
   pSyntaxNode record = ast;
   vector<Column> primarykey = currenttable->GetPrimarykey();
   if (ast->type_ == kNodeUpdateValues) {
@@ -1125,8 +1077,8 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
     while (ast != NULL) {
       char *op1 = ast->child_->val_;
       uint32_t op1index;
-      if(currenttable->GetSchema()->GetColumnIndex(op1, op1index) == DB_COLUMN_NAME_NOT_EXIST)
-          return DB_COLUMN_NAME_NOT_EXIST;
+      if (currenttable->GetSchema()->GetColumnIndex(op1, op1index) == DB_COLUMN_NAME_NOT_EXIST)
+        return DB_COLUMN_NAME_NOT_EXIST;
       FieldColumn.push_back(op1index);
       char *op2 = ast->child_->next_->val_;
       if (ast->child_->next_->type_ == kNodeNumber) {
@@ -1138,33 +1090,28 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
             return DB_FAILED;
           }
           update.push_back(tmpField);
-        } 
-        else {  // integer or float
+        } else {  // integer or float
           Field tmpField(kTypeInt, atoi(op2));
           if (columns.size() > update.size() && columns[op1index]->GetType() == kTypeInt) {
             Field tmpField(kTypeInt, atoi(op2));
             update.push_back(tmpField);
-            
-          } 
-          else if (columns.size() > update.size() && columns[op1index]->GetType() == kTypeFloat) {
+
+          } else if (columns.size() > update.size() && columns[op1index]->GetType() == kTypeFloat) {
             Field tmpField(kTypeFloat, (float)atof(op2));
             update.push_back(tmpField);
-          } 
-          else {
+          } else {
             cout << "Wrong Type!" << endl;
             return DB_FAILED;
           }
         }
-      } 
-      else if (ast->child_->next_->type_ == kNodeString) {
+      } else if (ast->child_->next_->type_ == kNodeString) {
         Field tmpField(kTypeChar, op2, strlen(op2), true);
         if (columns.size() > update.size() && columns[op1index]->GetType() != kTypeChar) {
           cout << "Wrong Type!" << endl;
           return DB_FAILED;
         }
         update.push_back(tmpField);
-      } 
-      else if (ast->child_->next_->type_ == kNodeNull) {
+      } else if (ast->child_->next_->type_ == kNodeNull) {
         if (ast->id_ > (int)columns.size()) {
           cout << "Wrong Columns num!" << endl;
           return DB_FAILED;
@@ -1189,12 +1136,12 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
     if (NewTravel(Currentp, currenttable, root, &result) == DB_SUCCESS) {
       for (auto iterresult = result.begin(); iterresult != result.end(); iterresult++) {
         updatecolumn = 0;
-        
+
         Row rowp(*iterresult);
         currenttable->GetTableHeap()->GetTuple(&rowp, txn);
         Row previous = rowp;
         vector<Field *> pre = previous.GetFields();
-        
+
         for (auto updateiter = update.begin(); updateiter != update.end(); updateiter++) {
           Field tmp(*updateiter);
           Swap((*updateiter), *(pre[FieldColumn[updatecolumn]]));
@@ -1214,7 +1161,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
               if ((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName() == (*columnsiter)->GetName()) {
                 // 通过index找有无重复
                 vector<RowId> Scanresult;
-                
+
                 int position;
                 page_id_t leaf_page_id;
                 uint32_t keyindex;
@@ -1222,10 +1169,11 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
                 vector<Field> rowkeyfield;
                 rowkeyfield.push_back(*previous.GetField(keyindex));
                 Row rowkey(rowkeyfield);
-                if ((*iterindexes)->GetIndex()->ScanKey(rowkey, Scanresult, position, leaf_page_id, txn) == DB_SUCCESS) {
+                if ((*iterindexes)->GetIndex()->ScanKey(rowkey, Scanresult, position, leaf_page_id, txn) ==
+                    DB_SUCCESS) {
                   // if (Scanresult[0])
                   if (*iterresult == Scanresult[0]) {
-                      continue;
+                    continue;
                   }
                   cout << "对于Unique列，不应该插入重复的元组" << endl;
                   return DB_FAILED;
@@ -1289,10 +1237,8 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           vector<Field> rowkeyfield;
           rowkeyfield.push_back(*previous.GetField(keyindex));
           Row rowkey(rowkeyfield);
-          if ((*iterindexes)->GetIndex()->RemoveEntry(rowkey, previous.GetRowId(), txn) == DB_FAILED)
-            return DB_FAILED;
-          if ((*iterindexes)->GetIndex()->InsertEntry(rowkey, previous.GetRowId(), txn) == DB_FAILED)
-            return DB_FAILED;
+          if ((*iterindexes)->GetIndex()->RemoveEntry(rowkey, previous.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
+          if ((*iterindexes)->GetIndex()->InsertEntry(rowkey, previous.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
         }
       }
       return DB_SUCCESS;
@@ -1327,26 +1273,60 @@ dberr_t ExecuteEngine::ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context)
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteExecfile" << std::endl;
 #endif
-  fstream sqlfile;
-  char *filename = ast->child_->val_;
-  sqlfile.open(filename);
-  if (!sqlfile.is_open())
+  auto file_name = ast->child_->val_;
+  ifstream fin;
+  fin.open(file_name, ios::in);
+  if (!fin.is_open()) {
+    cout << "fail to open the file!" << endl;
     return DB_FAILED;
-  else {
-    // fgets()
-    /* while (!sqlfile.end()) {
-      char *input{};
-      char ch{};
-      int i = 0;
-      while ((ch = sqlfile.get()) != ';') {
-        input[i++] = ch;
-      }
-      input[i] = ch;  // ;
-      getchar();
-      InputCommand(input, buf_size);
-    }*/
   }
+  string buff;
+  while (getline(fin, buff)) {
+    YY_BUFFER_STATE bp = yy_scan_string(buff.c_str());
+    if (bp == nullptr) {
+      LOG(ERROR) << "Failed to create yy buffer state." << std::endl;
+      exit(1);
+    }
+
+    yy_switch_to_buffer(bp);
+
+    // init parser module
+    MinisqlParserInit();
+
+    // parse
+    yyparse();
+
+    // parse result handle
+    if (MinisqlParserGetError()) {
+      // error
+      printf("%s\n", MinisqlParserGetErrorMessage());
+    } else {
+#ifdef ENABLE_PARSER_DEBUG
+      printf("[INFO] Sql syntax parse ok!\n");
+      SyntaxTreePrinter printer(MinisqlGetParserRootNode());
+      printer.PrintTree(syntax_tree_file_mgr[syntax_tree_id++]);
+#endif
+    }
+    ExecuteContext context;
+    LOG(INFO) << "execute";
+    (*this).Execute(MinisqlGetParserRootNode(), &context);
+
+    sleep(1);
+
+    // clean memory after parse
+    MinisqlParserFinish();
+    yy_delete_buffer(bp);
+    yylex_destroy();
+
+    // quit condition
+    if (context.flag_quit_) {
+      printf("bye!\n");
+      break;
+    }
+  }
+  fin.close();
   return DB_FAILED;
+
 }
 
 dberr_t ExecuteEngine::ExecuteQuit(pSyntaxNode ast, ExecuteContext *context) {
