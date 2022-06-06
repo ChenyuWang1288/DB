@@ -103,8 +103,7 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
     DBStorageEngine *NewDBptr = new DBStorageEngine(ast->val_);
     dbs_.insert(make_pair(ast->val_, NewDBptr));
 
-    out << ast->val_;
-    out << endl;
+    out << ast->val_ << " ";
     out.close();
     return DB_SUCCESS;
   }
@@ -124,28 +123,32 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
 
       ifstream in("databasefile.txt");
       ofstream outtmp("databasefiletmp.txt");
-      string tmp;
+      
       if (in.is_open() && outtmp.is_open()) {
         while (!in.eof()) {
+          string tmp;
           in >> tmp;
           if (tmp != ast->val_) {
-            outtmp << tmp;
-            outtmp << endl;
+            outtmp << tmp << " ";
           }
         }
         in.close();
         outtmp.close();
+        
+        remove("databasefile.txt");
         ofstream out("databasefile.txt");
         ifstream intmp("databasefiletmp.txt");
         if (out.is_open() && intmp.is_open()) {
           while (!intmp.eof()) {
-            intmp >> tmp;
-            out << tmp << endl;
+            string tmp11;
+            intmp >> tmp11;
+            out << tmp11 << " ";
           }
           intmp.close();
           out.close();
           delete DBToDrop;      // 删除这个database
           it = dbs_.erase(it);  // 从unorderedmap中移除该dbs
+          remove("databasefiletmp.txt");
           return DB_SUCCESS;
         }
       }
