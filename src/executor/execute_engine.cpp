@@ -406,9 +406,18 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   ast = ast->next_;
   tablename = ast->val_;
   ast = ast->next_;
+  TableInfo *currenttable;
+  if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
+  vector<Column*> columns = currenttable->GetSchema()->GetColumns();
   if (ast->type_ == kNodeColumnList) {
     pSyntaxNode tmp = ast->child_;
     while (tmp != NULL) {
+      for (auto iter = columns.begin(); iter != columns.end(); iter++) {
+        if (!(*iter)->IsUnique() && (*iter)->GetName() == ast->val_) {
+          cout << "只能在唯一键上建立索引" << endl;
+          return DB_FAILED;
+        }
+      }
       indexkeys.push_back(tmp->val_);
       tmp = tmp->next_;
     }
