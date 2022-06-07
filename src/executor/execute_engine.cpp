@@ -407,7 +407,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   tablename = ast->val_;
   ast = ast->next_;
   TableInfo *currenttable;
-  if (Currentp->catalog_mgr_->GetTable(ast->val_, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
+  if (Currentp->catalog_mgr_->GetTable(tablename, currenttable) == DB_TABLE_NOT_EXIST) return DB_TABLE_NOT_EXIST;
   vector<Column*> columns = currenttable->GetSchema()->GetColumns();
   if (ast->type_ == kNodeColumnList) {
     pSyntaxNode tmp = ast->child_;
