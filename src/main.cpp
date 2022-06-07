@@ -3,7 +3,10 @@
 #include "glog/logging.h"
 #include "parser/syntax_tree_printer.h"
 #include "utils/tree_file_mgr.h"
-
+#include <time.h>
+clock_t start, stop;
+double totaltime;
+int ticks;
 extern "C" {
 int yyparse(void);
 FILE *yyin;
@@ -73,8 +76,12 @@ int main(int argc, char **argv) {
     return 0;*/
     // system("pause");
     ExecuteContext context;
+    start = clock();
     engine.Execute(MinisqlGetParserRootNode(), &context);
-
+    stop = clock();
+    ticks = stop - start;
+    totaltime = ((double)ticks) / CLOCKS_PER_SEC;
+    cout << "cost time: " << totaltime << endl;
     sleep(1);
 
     // clean memory after parse
