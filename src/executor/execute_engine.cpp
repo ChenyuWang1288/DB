@@ -517,7 +517,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
         IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter(leaf_page_id, position, Currentp->bpm_);
         auto indexptr =
             reinterpret_cast<BPlusTreeIndex<GenericKey<32>, RowId, GenericComparator<32>> *>((*nowindex).GetIndex());
-
+        if (scanresult.size() == 0) return DB_FAILED;
         if (strcmp(cmpoperator, "=") == 0) {
           (*result).push_back(scanresult[0]);
           if (!(*result).empty()) return DB_SUCCESS;
@@ -1314,7 +1314,7 @@ dberr_t ExecuteEngine::ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context)
     LOG(INFO) << "execute";
     (*this).Execute(MinisqlGetParserRootNode(), &context);
 
-    sleep(1);
+    // sleep(1);
 
     // clean memory after parse
     MinisqlParserFinish();
