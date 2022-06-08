@@ -74,7 +74,8 @@ public:
 
   MemHeap *GetHeap() { return heap_; }
 
-  dberr_t CreateTable(const std::string &table_name, TableSchema *schema, Transaction *txn, TableInfo *&table_info);
+  dberr_t CreateTable(const std::string &table_name, TableSchema *schema, std::vector<Column> primary_key,
+                      Transaction *txn, TableInfo *&table_info);
 
   dberr_t GetTable(const std::string &table_name, TableInfo *&table_info);
 
