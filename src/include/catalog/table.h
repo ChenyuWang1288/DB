@@ -17,8 +17,8 @@ public:
 
   static uint32_t DeserializeFrom(char *buf, TableMetadata *&table_meta, MemHeap *heap);//反序列化
 
-  static TableMetadata *Create(table_id_t table_id, std::string table_name,
-                               page_id_t root_page_id, TableSchema *schema, MemHeap *heap);//创建一个元信息
+  static TableMetadata *Create(table_id_t table_id, std::string table_name, page_id_t root_page_id, TableSchema *schema,
+                               vector<Column> primary_key, MemHeap *heap);  //创建一个元信息
 
   inline table_id_t GetTableId() const { return table_id_; }
 
@@ -27,19 +27,24 @@ public:
   inline uint32_t GetFirstPageId() const { return root_page_id_; }
 
   inline Schema *GetSchema() const { return schema_; }
+  
+  uint32_t GetPrimaryKeyCount() const { return primarykey.size(); }
+  
+  inline const std::vector<Column> &GetPrimaryKey() const { return primarykey; }
 
- 
-private://初始化
+ private://初始化
   TableMetadata() = delete;
 
-  TableMetadata(table_id_t table_id, std::string table_name, page_id_t root_page_id, TableSchema *schema);
+  TableMetadata(table_id_t table_id, std::string table_name, page_id_t root_page_id, TableSchema *schema,
+                vector<Column> primary_key);
 
 private:
   static constexpr uint32_t TABLE_METADATA_MAGIC_NUM = 344528;//检验序列化的
   table_id_t table_id_;
   std::string table_name_;
-  page_id_t root_page_id_;//？表格也以b+树形式建立嘛？
+  page_id_t root_page_id_;
   Schema *schema_;
+  std::vector<Column> primarykey;
 };
 
 /**
@@ -70,16 +75,18 @@ public:
   inline std::string GetTableName() const { return table_meta_->table_name_; }
 
   inline Schema *GetSchema() const { return table_meta_->schema_; }
+ 
+  inline vector<Column> GetPrimaryKey() const { return table_meta_->primarykey; }
 
   inline page_id_t GetRootPageId() const { return table_meta_->root_page_id_; }
 
-  inline vector<Column> GetPrimarykey() const { return primarykey; }
+  //inline vector<Column> GetPrimarykey() const { return primarykey; }
 
-  inline void CreatePrimarykey(vector<Column> &primarykey) { this->primarykey = primarykey; }
+ // inline void CreatePrimarykey(vector<Column> &primarykey) { this->primarykey = primarykey; }
 
-  inline vector<Column> GetPrimaryKey() const { return primarykey; }
+ //inline vector<Column> GetPrimaryKey() const { return primarykey; }
 
-  inline void CreatePrimaryKey(vector<Column> &primarykey) { this->primarykey = primarykey; }
+  //inline void CreatePrimaryKey(vector<Column> &primarykey) { this->primarykey = primarykey; }
 
   inline void SetRootPageId() {
     this->table_meta_->root_page_id_ = this->table_heap_->GetFirstPageId();
@@ -95,7 +102,7 @@ private:
   TableMetadata *table_meta_;
   TableHeap *table_heap_;
   MemHeap *heap_; /** store all objects allocated in table_meta and table heap */
-  vector<Column> primarykey;
+  //vector<Column> primarykey;
 };
 
 #endif //MINISQL_TABLE_H
