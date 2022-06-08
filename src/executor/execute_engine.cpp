@@ -301,23 +301,17 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     }
     // TableSchema NewSchema(NewColumns);
     // TableSchema *p = new
+    if (primarykey.size() == 1) {
+      primarykey[0].SetUnique();
+    }
     TableSchema *NewSchema = ALLOC_P(Currentp->catalog_mgr_->GetHeap(), TableSchema)(NewColumns);
-    if (Currentp->catalog_mgr_->CreateTable(NewTableName, NewSchema, txn, Newtable_info) == DB_SUCCESS) {
-      // MemHeap *heap{};
-      TableInfo *currenttable{};
-      // currenttable->Create(heap);
-
-      Currentp->catalog_mgr_->GetTable(NewTableName, currenttable);
-      currenttable->CreatePrimarykey(primarykey);
-      if (primarykey.size() == 1) {
-        primarykey[0].SetUnique();
-      }
+    if (Currentp->catalog_mgr_->CreateTable(NewTableName, NewSchema, primarykey, txn, Newtable_info) == DB_SUCCESS) {
+      // MemHeap *heap{}
       return DB_SUCCESS;
     }
-
     return DB_FAILED;
   }
-  return DB_FAILED;
+ return DB_FAILED;
 }
 
 dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context) {
@@ -951,7 +945,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       }
     }
   }
-  vector<Column> primarykey = currenttable->GetPrimarykey();
+  vector<Column> primarykey = currenttable->GetPrimaryKey();
   // 如果是主键 则检查有无重复元组
   if (primarykey.size() > 1) {
     vector<uint32_t> columnindexes;
@@ -1083,7 +1077,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   int updatecolumn = 0;
   ast = ast->next_;  // kNodeUpdateValues
   pSyntaxNode record = ast;
-  vector<Column> primarykey = currenttable->GetPrimarykey();
+  vector<Column> primarykey = currenttable->GetPrimaryKey();
   if (ast->type_ == kNodeUpdateValues) {
     ast = ast->child_;
     while (ast != NULL) {
