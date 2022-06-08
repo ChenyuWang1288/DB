@@ -13,14 +13,25 @@ uint32_t TableMetadata::SerializeTo(char *buf) const {
   MACH_WRITE_UINT32(buf, root_page_id_);
   buf += sizeof(uint32_t);
   /*schema */
-  buf += schema_->SerializeTo(buf);
+  buf += schema_->SerializeTo(buf);//在schema中序列化
+ 
+  MACH_WRITE_UINT32(buf, primarykey.size());
+  buf += sizeof(uint32_t);
+  for (auto it = primarykey.begin(); it != primarykey.end(); it++) {
+    buf += it->SerializeTo(buf);//在colomn中序列化
+  }
+
   uint32_t offset = buf - begin;
   buf = begin;
   return offset;
 }
 
 uint32_t TableMetadata::GetSerializedSize() const {
-  return sizeof(uint32_t) * 4 + (unsigned long)table_name_.length() + schema_->GetSerializedSize();
+  uint32_t size = 0;
+  for (auto it = primarykey.begin(); it != primarykey.end(); it++) {
+    size += it->GetSerializedSize(); 
+  }
+  return sizeof(uint32_t) * 4 + (unsigned long)table_name_.length() + schema_->GetSerializedSize()+size;
 }
 
 /**
@@ -53,9 +64,20 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, M
 
   /*deserialize schema*/
   Schema *s = nullptr;
-  Schema::DeserializeFrom(buf, s, heap);
+  buf += Schema::DeserializeFrom(buf, s, heap);
+  
+  //deserialize primarykey
+  uint32_t size = MACH_READ_UINT32(buf);
+  buf += sizeof(uint32_t);
+  std::vector<Column> pk;
+  pk.clear();
+  for (uint32_t i = 0; i < size; i++) {
+    Column *primary__key;
+    buf += Column::DeserializeFrom(buf, primary__key, heap);
+    pk.push_back(primary__key);
+  }
 
-  table_meta = Create(tid, t_name, rid, s, heap);//创建元信息（所有的这里的类的信息都是由自己的heap创建的）
+  table_meta = Create(tid, t_name, rid, s, pk, heap);//创建元信息（所有的这里的类的信息都是由自己的heap创建的）
   size_t offset = buf - begin;
   buf = begin;//不更改buf的值
   delete[] t_name;
@@ -67,12 +89,17 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, M
  *
  * @param heap Memory heap passed by TableInfo
  */
-TableMetadata *TableMetadata::Create(table_id_t table_id, std::string table_name,
-                                     page_id_t root_page_id, TableSchema *schema, MemHeap *heap) {
+TableMetadata *TableMetadata::Create(table_id_t table_id, std::string table_name, page_id_t root_page_id,
+                                     TableSchema *schema, vector<Column> primary_key, MemHeap *heap) {
   // allocate space for table metadata
   void *buf = heap->Allocate(sizeof(TableMetadata));
-  return new(buf)TableMetadata(table_id, table_name, root_page_id, schema);
+  return new (buf) TableMetadata(table_id, table_name, root_page_id, schema, primary_key);
 }
 
-TableMetadata::TableMetadata(table_id_t table_id, std::string table_name, page_id_t root_page_id, TableSchema *schema)
-        : table_id_(table_id), table_name_(table_name), root_page_id_(root_page_id), schema_(schema) {}
+TableMetadata::TableMetadata(table_id_t table_id, std::string table_name, page_id_t root_page_id, TableSchema *schema,
+                             vector<Column> primary_key)
+    : table_id_(table_id),
+      table_name_(table_name),
+      root_page_id_(root_page_id),
+      schema_(schema),
+      primarykey(primary_key) {}
