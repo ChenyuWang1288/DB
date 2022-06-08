@@ -161,6 +161,7 @@ CatalogManager::~CatalogManager() {
 }
 
 dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schema,
+                                    std::vector<Column> primary_key,
                                     Transaction *txn, TableInfo *&table_info) {
 
   /*first: check if there is table_name already*/
@@ -178,7 +179,7 @@ dberr_t CatalogManager::CreateTable(const string &table_name, TableSchema *schem
   //buffer_pool_manager_->NewPage(root_page_id);  //content for this table
 
   /*create metadata for this table*/
-  TableMetadata *table_meta = TableMetadata::Create(table_id, table_name, INVALID_PAGE_ID, schema, heap_);  
+  TableMetadata *table_meta = TableMetadata::Create(table_id, table_name, INVALID_PAGE_ID, schema, primary_key, heap_);  
   table_meta->SerializeTo(meta_page->GetData());//序列化这个元信息
 
   buffer_pool_manager_->UnpinPage(meta_page_id, true);
