@@ -72,7 +72,7 @@ uint32_t TableMetadata::DeserializeFrom(char *buf, TableMetadata *&table_meta, M
   std::vector<Column> pk;
   pk.clear();
   for (uint32_t i = 0; i < size; i++) {
-    Column *primary__key;
+    Column *primary__key = nullptr;
     buf += Column::DeserializeFrom(buf, primary__key, heap);
     pk.push_back(primary__key);
   }

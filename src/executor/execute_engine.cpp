@@ -253,12 +253,14 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
           if (strcmp(tmp->next_->val_, "int") == 0) {
             newtype = kTypeInt;
             // Column newcol(tmp->val_, newtype, indexnum, nullable, uniqueable);
-            Column *newcolptr = new Column(tmp->val_, newtype, indexnum, nullable, uniqueable);
+            Column *newcolptr =
+                ALLOC_P(Currentp->catalog_mgr_->GetHeap(), Column)(tmp->val_, newtype, indexnum, nullable, uniqueable);
             NewColumns.push_back(newcolptr);
           } else if (strcmp(tmp->next_->val_, "float") == 0) {
             newtype = kTypeFloat;
             // Column newcol(tmp->val_, newtype, indexnum, nullable, uniqueable);
-            Column *newcolptr = new Column(tmp->val_, newtype, indexnum, nullable, uniqueable);
+            Column *newcolptr =
+                ALLOC_P(Currentp->catalog_mgr_->GetHeap(), Column)(tmp->val_, newtype, indexnum, nullable, uniqueable);
             NewColumns.push_back(newcolptr);
           } else if (strcmp(tmp->next_->val_, "char") == 0) {
             newtype = kTypeChar;
