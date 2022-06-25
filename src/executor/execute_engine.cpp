@@ -1151,7 +1151,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   pSyntaxNode astCondition = record->next_;  // kNodeConditions
   vector<IndexInfo *> indexes;
   Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), indexes);
-  if (astCondition->type_ == kNodeConditions) {
+  if (astCondition != NULL && astCondition->type_ == kNodeConditions) {
     pSyntaxNode root = astCondition->child_;
     vector<RowId> result;
     if (NewTravel(Currentp, currenttable, root, &result) == DB_SUCCESS) {
