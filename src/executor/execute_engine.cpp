@@ -301,6 +301,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       }
       ast = ast->next_;
     }
+    IndexInfo *index_info = NULL;
     // TableSchema NewSchema(NewColumns);
     // TableSchema *p = new
     if (primarykey.size() == 1) {
@@ -309,6 +310,18 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     TableSchema *NewSchema = ALLOC_P(Currentp->catalog_mgr_->GetHeap(), TableSchema)(NewColumns);
     if (Currentp->catalog_mgr_->CreateTable(NewTableName, NewSchema, primarykey, txn, Newtable_info) == DB_SUCCESS) {
       // MemHeap *heap{}
+      // 给unique的列都建索引
+      TableInfo *currenttable;
+      Currentp->catalog_mgr_->GetTable(NewTableName, currenttable);
+      vector<Column *> currentColumns;
+      currentColumns =currenttable->GetSchema()->GetColumns();
+      for (auto columnsiter = currentColumns.begin(); columnsiter != currentColumns.end(); columnsiter++) {
+        (*columnsiter)->IsUnique();
+        // unique即建索引
+        vector<string> indexkeys;
+        indexkeys.push_back((*columnsiter)->GetName());
+        Currentp->catalog_mgr_->CreateIndex(NewTableName, (*columnsiter)->GetName(), indexkeys, txn, index_info);
+      }
       return DB_SUCCESS;
     }
     return DB_FAILED;
