@@ -40,9 +40,17 @@ TEST(BPlusTreeTests, SampleTest) {
   // Print tree
   tree.PrintTree(mgr[0]);
   // Search keys
+  
+  /*modified function interface
+  2 parameter: position leaf_page_id
+  */
+  int position = 0;
+  page_id_t leaf_page_id = INVALID_PAGE_ID;
+
+
   vector<int> ans;
   for (int i = 0; i < n; i++) {
-    tree.GetValue(i, ans);
+    tree.GetValue(i, ans, position, leaf_page_id);
     ASSERT_EQ(kv_map[i], ans[i]);
   }
   ASSERT_TRUE(tree.Check());
@@ -54,10 +62,10 @@ TEST(BPlusTreeTests, SampleTest) {
   // Check valid
   ans.clear();
   for (int i = 0; i < n / 2; i++) {
-    ASSERT_FALSE(tree.GetValue(delete_seq[i], ans));
+    ASSERT_FALSE(tree.GetValue(delete_seq[i], ans, position, leaf_page_id));
   }
   for (int i = n / 2; i < n; i++) {
-    ASSERT_TRUE(tree.GetValue(delete_seq[i], ans));
+    ASSERT_TRUE(tree.GetValue(delete_seq[i], ans, position, leaf_page_id));
     ASSERT_EQ(kv_map[delete_seq[i]], ans[ans.size() - 1]);
   }
 }
