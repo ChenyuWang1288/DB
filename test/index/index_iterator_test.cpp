@@ -18,12 +18,19 @@ TEST(BPlusTreeTests, IndexIteratorTest) {
     tree.Remove(i);
   }
   // Search keys
+
+  /*modified function interface:
+  2 parameter: position, leaf_page_id
+  */
+  int position = 0;
+  page_id_t leaf_page_id = INVALID_PAGE_ID;
+
   vector<int> v;
   for (int i = 2; i <= 50; i += 2) {
-    ASSERT_FALSE(tree.GetValue(i, v));
+    ASSERT_FALSE(tree.GetValue(i, v, position, leaf_page_id));
   }
   for (int i = 1; i <= 49; i += 2) {
-    ASSERT_TRUE(tree.GetValue(i, v));
+    ASSERT_TRUE(tree.GetValue(i, v, position, leaf_page_id));
     ASSERT_EQ(i * 100, v[v.size() - 1]);
   }
   // Iterator

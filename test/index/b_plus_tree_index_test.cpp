@@ -59,6 +59,11 @@ TEST(BPlusTreeTests, BPlusTreeIndexSimpleTest) {
     ASSERT_EQ(DB_SUCCESS, index->InsertEntry(row, rid, nullptr));
   }
   // Test Scan
+  /*modified function interface:
+  2 parameter: position, leaf_page_id
+  */
+  int position = 0;
+  page_id_t leaf_page_id = INVALID_PAGE_ID;
   std::vector<RowId> ret;
   for (int i = 0; i < 10; i++) {
     std::vector<Field> fields{
@@ -67,7 +72,7 @@ TEST(BPlusTreeTests, BPlusTreeIndexSimpleTest) {
     };
     Row row(fields);
     RowId rid(1000, i);
-    ASSERT_EQ(DB_SUCCESS, index->ScanKey(row, ret, nullptr));
+    ASSERT_EQ(DB_SUCCESS, index->ScanKey(row, ret, position, leaf_page_id, nullptr));
     ASSERT_EQ(rid.Get(), ret[i].Get());
   }
   // Iterator Scan
