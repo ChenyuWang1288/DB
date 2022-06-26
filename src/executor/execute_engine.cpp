@@ -238,7 +238,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       break;
     }
   }
-  int index = 0;
+  // int index = 0;
   vector<Column> primarykey;
   ast = ast->next_;  // ast type kNodeColumnDefinitionList
   if (ast->type_ == kNodeColumnDefinitionList) {
@@ -289,15 +289,15 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
           tmp = ast->child_;
           while (tmp != NULL) {
             if (tmp->type_ == kNodeIdentifier) {
-              int count = 0;
+              // int count = 0;
               for (auto i = NewColumns.begin(); i != NewColumns.end(); i++) {
                 if ((*i)->GetName() == tmp->val_) {
                   Column tmpC = *i;
                   primarykey.push_back(tmpC);
-                  index = count;
+                  // index = count;
                   break;
                 }
-                count++;
+                // count++;
               }
             }
             tmp = tmp->next_;
@@ -310,10 +310,11 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     IndexInfo *index_info_pk = NULL;
     // TableSchema NewSchema(NewColumns);
     // TableSchema *p = new
+    /*
     if (primarykey.size() == 1) {
       NewColumns[index]->SetUnique();
       // primarykey[0].SetUnique();
-    }
+    }*/
     TableSchema *NewSchema = ALLOC_P(Currentp->catalog_mgr_->GetHeap(), TableSchema)(NewColumns);
     if (Currentp->catalog_mgr_->CreateTable(NewTableName, NewSchema, primarykey, txn, Newtable_info) == DB_SUCCESS) {
       // MemHeap *heap{}
@@ -522,6 +523,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
     string indexname;
     Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), nowindexes);
     for (auto m = nowindexes.begin(); m != nowindexes.end(); m++) {
+      if ((*m)->GetIndexName() == "primarykey") break;
       if ((*m)->GetIndexKeySchema()->GetColumns().size() == 1) {
         if ((*m)->GetIndexKeySchema()->GetColumn(0)->GetName() == op1) {
           indexname = (*m)->GetIndexName();
@@ -978,7 +980,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   }
   vector<Column> primarykey = currenttable->GetPrimaryKey();
   // 如果是主键 则检查有无重复元组
-  if (primarykey.size() > 1) {
+  if (1) {
     vector<uint32_t> columnindexes;
     vector<uint32_t>::iterator iter;
     for (auto piter = primarykey.begin(); piter != primarykey.end(); piter++) {
@@ -1262,7 +1264,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
           }
         }
         // primary key约束
-        if (primarykey.size() > 1) {
+        if (1) {
           vector<uint32_t> columnindexes;
           vector<uint32_t>::iterator iter;
           for (auto piter = primarykey.begin(); piter != primarykey.end(); piter++) {
@@ -1270,7 +1272,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
             currenttable->GetSchema()->GetColumnIndex((*piter).GetName(), tmpindex);
             columnindexes.push_back(tmpindex);
           }
-          // 此时说明是联合主键
+          /*// 此时说明是联合主键
           currenttable->GetTableHeap()->GetTuple(&nowrow, txn);
           TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
           for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
@@ -1285,6 +1287,26 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
             {
               cout << "conflict with primary key!" << endl;
               return DB_FAILED;
+            }
+          }*/
+          /*find the index for pk*/
+          for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+            if ((*iterindexes)->GetIndexName() == "primarykey") {
+              vector<RowId> result;
+              int position;
+              page_id_t leaf_page_id;
+
+              vector<Field> rowkeyfield;
+              /*get the key value of pk*/
+              for (auto it = columnindexes.begin(); it != columnindexes.end(); it++) {
+                rowkeyfield.push_back(*previous.GetField(*it));
+              }
+              Row rowkey(rowkeyfield);
+              if ((*iterindexes)->GetIndex()->ScanKey(rowkey, result, position, leaf_page_id, txn) == DB_SUCCESS) {
+                cout << "对于primary key列，不应该插入重复的元组" << endl;
+                return DB_FAILED;
+              }
+              break;
             }
           }
         }
