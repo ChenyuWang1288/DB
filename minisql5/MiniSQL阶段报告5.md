@@ -30,9 +30,13 @@ Executor（执行器）的主要功能是根据解释器（Parser）生成的语
 - `ExecuteEngine::ExecuteDropDatabase(*ast, *context)`
 
   - 思路
+
     - 在`dbs_`中找到该数据库，删除
     - 在文件中删除
+
   - 测试
+
+    <img src="C:\Users\17260\AppData\Roaming\Typora\typora-user-images\image-20220626132544259.png" alt="image-20220626132544259" style="zoom:50%;" /> 
 
 - `ExecuteEngine::ExecuteShowDatabases(*ast, *context)`
 
@@ -78,9 +82,13 @@ Executor（执行器）的主要功能是根据解释器（Parser）生成的语
 - `ExecuteEngine::ExecuteDropTable(*ast, *context)`
 
   - 思路
+
     - 得到需要被drop的table name
     - 调用`current database`中的`catalog_mgr_`中的`DropTable()`函数来drop
+
   - 测试
+
+    <img src="C:\Users\17260\AppData\Roaming\Typora\typora-user-images\image-20220626132452634.png" alt="image-20220626132452634" style="zoom: 50%;" /> 
 
 - `ExecuteEngine::ExecuteShowIndexes(*ast, *context)`
 
@@ -181,8 +189,8 @@ Executor（执行器）的主要功能是根据解释器（Parser）生成的语
   - 思路
 
     - 与`select`、`insert`、`delete`中原理一致
-    - 插入时也需判断unique和primary key等约束条件
-    - 修改index
+    - 更新也需判断unique和primary key等约束条件
+    - 更新index
 
   - 测试
 
@@ -214,4 +222,5 @@ Executor（执行器）的主要功能是根据解释器（Parser）生成的语
   - 思路
     - `context->flag_quit_ = true`
   - 测试
+    - 命令行中输入`quit;`回车后程序结束
 
