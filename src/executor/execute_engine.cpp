@@ -1011,7 +1011,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
         }
         Row rowkey(rowkeyfield);
         if ((*iterindexes)->GetIndex()->ScanKey(rowkey, result, position, leaf_page_id, txn) == DB_SUCCESS) {
-          cout << "对于Unique列，不应该插入重复的元组" << endl;
+          cout << "对于primary key列，不应该插入重复的元组" << endl;
           return DB_FAILED;
         }
         break;
