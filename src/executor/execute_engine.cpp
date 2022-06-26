@@ -266,7 +266,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
             newtype = kTypeChar;
             float l = atof(tmp->next_->child_->val_);
             // 此处应该增加约束条件
-            uint32_t length;
+            uint32_t length = 0;
             if (ceil(l) != floor(l) || l < 0) {
               cout << "字符长度不是整数" << endl;
               return DB_FAILED;
@@ -277,7 +277,8 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
             }
             length = ceil(l);
             // Column newcol(tmp->val_, newtype, length, indexnum, nullable, uniqueable);
-            Column *newcolptr = new Column(tmp->val_, newtype, length, indexnum, nullable, uniqueable);
+            Column *newcolptr =
+                ALLOC_P(Currentp->catalog_mgr_->GetHeap(), Column)(tmp->val_, newtype, length, indexnum, nullable, uniqueable);
             NewColumns.push_back(newcolptr);
           }
           indexnum++;
@@ -316,11 +317,12 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       vector<Column *> currentColumns;
       currentColumns =currenttable->GetSchema()->GetColumns();
       for (auto columnsiter = currentColumns.begin(); columnsiter != currentColumns.end(); columnsiter++) {
-        (*columnsiter)->IsUnique();
+        if ((*columnsiter)->IsUnique()) {
+          vector<string> indexkeys;
+          indexkeys.push_back((*columnsiter)->GetName());
+          Currentp->catalog_mgr_->CreateIndex(NewTableName, (*columnsiter)->GetName(), indexkeys, txn, index_info);
+        }
         // unique即建索引
-        vector<string> indexkeys;
-        indexkeys.push_back((*columnsiter)->GetName());
-        Currentp->catalog_mgr_->CreateIndex(NewTableName, (*columnsiter)->GetName(), indexkeys, txn, index_info);
       }
       return DB_SUCCESS;
     }
