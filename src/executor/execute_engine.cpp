@@ -982,18 +982,39 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       columnindexes.push_back(tmpindex);
     }
     // 此时说明是联合主键
-    TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
-    for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
-         tableit++) {
-      for (iter = columnindexes.begin(); iter != columnindexes.end(); iter++) {
-        if (row.GetField(*iter)->CompareEquals(*((*tableit).GetField(*iter))) != kTrue) {
-          break;
+    //TableIterator tableit(currenttable->GetTableHeap()->Begin(txn));
+    //for (tableit == currenttable->GetTableHeap()->Begin(txn); tableit != currenttable->GetTableHeap()->End();
+    //     tableit++) {
+    //  for (iter = columnindexes.begin(); iter != columnindexes.end(); iter++) {
+    //    if (row.GetField(*iter)->CompareEquals(*((*tableit).GetField(*iter))) != kTrue) {
+    //      break;
+    //    }
+    //  }
+    //  if (iter == columnindexes.end())  // 所有的field都一样
+    //  {
+    //    cout << "conflict with primary key!" << endl;
+    //    return DB_FAILED;
+    //  }
+    //}
+
+    /*find the index for pk*/
+    for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
+      if ((*iterindexes)->GetIndexName() == "primarykey") {
+        vector<RowId> result;
+        int position;
+        page_id_t leaf_page_id;
+
+        vector<Field> rowkeyfield;
+        /*get the key value of pk*/
+        for (auto it = columnindexes.begin(); it != columnindexes.end(); it++) {
+          rowkeyfield.push_back(*row.GetField(*it));
         }
-      }
-      if (iter == columnindexes.end())  // 所有的field都一样
-      {
-        cout << "conflict with primary key!" << endl;
-        return DB_FAILED;
+        Row rowkey(rowkeyfield);
+        if ((*iterindexes)->GetIndex()->ScanKey(rowkey, result, position, leaf_page_id, txn) == DB_SUCCESS) {
+          cout << "对于Unique列，不应该插入重复的元组" << endl;
+          return DB_FAILED;
+        }
+        break;
       }
     }
   }
