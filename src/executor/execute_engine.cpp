@@ -238,6 +238,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       break;
     }
   }
+  int index = 0;
   vector<Column> primarykey;
   ast = ast->next_;  // ast type kNodeColumnDefinitionList
   if (ast->type_ == kNodeColumnDefinitionList) {
@@ -288,12 +289,15 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
           tmp = ast->child_;
           while (tmp != NULL) {
             if (tmp->type_ == kNodeIdentifier) {
+              int count = 0;
               for (auto i = NewColumns.begin(); i != NewColumns.end(); i++) {
                 if ((*i)->GetName() == tmp->val_) {
                   Column tmpC = *i;
                   primarykey.push_back(tmpC);
+                  index = count;
                   break;
                 }
+                count++;
               }
             }
             tmp = tmp->next_;
@@ -307,7 +311,8 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     // TableSchema NewSchema(NewColumns);
     // TableSchema *p = new
     if (primarykey.size() == 1) {
-      primarykey[0].SetUnique();
+      NewColumns[index]->SetUnique();
+      // primarykey[0].SetUnique();
     }
     TableSchema *NewSchema = ALLOC_P(Currentp->catalog_mgr_->GetHeap(), TableSchema)(NewColumns);
     if (Currentp->catalog_mgr_->CreateTable(NewTableName, NewSchema, primarykey, txn, Newtable_info) == DB_SUCCESS) {
@@ -433,7 +438,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
     pSyntaxNode tmp = ast->child_;
     while (tmp != NULL) {
       for (auto iter = columns.begin(); iter != columns.end(); iter++) {
-        if (!(*iter)->IsUnique() && (*iter)->GetName() == ast->val_) {
+        if (!(*iter)->IsUnique() && (*iter)->GetName() == ast->child_->val_) {
           cout << "只能在唯一键上建立索引" << endl;
           return DB_FAILED;
         }
