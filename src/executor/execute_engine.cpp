@@ -303,6 +303,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       ast = ast->next_;
     }
     IndexInfo *index_info = NULL;
+    IndexInfo *index_info_pk = NULL;
     // TableSchema NewSchema(NewColumns);
     // TableSchema *p = new
     if (primarykey.size() == 1) {
@@ -312,10 +313,11 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     if (Currentp->catalog_mgr_->CreateTable(NewTableName, NewSchema, primarykey, txn, Newtable_info) == DB_SUCCESS) {
       // MemHeap *heap{}
       // 给unique的列都建索引
-      TableInfo *currenttable;
+      TableInfo *currenttable{};
       Currentp->catalog_mgr_->GetTable(NewTableName, currenttable);
       vector<Column *> currentColumns;
       currentColumns =currenttable->GetSchema()->GetColumns();
+
       for (auto columnsiter = currentColumns.begin(); columnsiter != currentColumns.end(); columnsiter++) {
         if ((*columnsiter)->IsUnique()) {
           vector<string> indexkeys;
@@ -324,6 +326,13 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
         }
         // unique即建索引
       }
+      // pk建索引
+      vector<Column> pkColumns = currenttable->GetPrimaryKey();
+      vector<string> pkString;
+      for (auto pkiter = pkColumns.begin(); pkiter != pkColumns.end(); pkiter++) {
+        pkString.push_back((*pkiter).GetName());
+      }
+      Currentp->catalog_mgr_->CreateIndex(NewTableName, "primarykey", pkString, txn, index_info_pk);
       return DB_SUCCESS;
     }
     return DB_FAILED;
@@ -995,9 +1004,13 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     // 检查indexex
     for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
       uint32_t keyindex;
-      currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName(), keyindex);
+      uint32_t i = 0;
       vector<Field> rowkeyfield;
-      rowkeyfield.push_back(*row.GetField(keyindex));
+      for (i = 0; i < (*iterindexes)->GetIndexKeySchema()->GetColumnCount(); i++) {
+        currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(i)->GetName(),
+                                                  keyindex);
+        rowkeyfield.push_back(*row.GetField(keyindex));
+      }
       Row rowkey(rowkeyfield);
       if ((*iterindexes)->GetIndex()->InsertEntry(rowkey, row.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
     }
