@@ -582,7 +582,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
           }
           if (!(*result).empty()) return DB_SUCCESS;
           return DB_FAILED;
-        } else if (strcmp(cmpoperator, "!=") == 0) {
+        } else if (strcmp(cmpoperator, "<>") == 0) {
           // IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexiter;
           IndexIterator<GenericKey<32>, RowId, GenericComparator<32>> indexiter2 = indexptr->GetBeginIterator();
 
