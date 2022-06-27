@@ -11,11 +11,10 @@ INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::IndexIterator(page_id_t leaf_page, 
                                                            BufferPoolManager *buffer_pool_manager)
     : target_leaf_(nullptr), index_(position), buffer_pool_manager_(buffer_pool_manager) {
   target_leaf_ = reinterpret_cast<LeafPage *>(buffer_pool_manager_->FetchPage(leaf_page)->GetData());
-
 }
 
 INDEX_TEMPLATE_ARGUMENTS INDEXITERATOR_TYPE::~IndexIterator() {
-
+  buffer_pool_manager_->UnpinPage(target_leaf_->GetPageId(), true);
 }
 
 INDEX_TEMPLATE_ARGUMENTS const MappingType &INDEXITERATOR_TYPE::operator*() { 

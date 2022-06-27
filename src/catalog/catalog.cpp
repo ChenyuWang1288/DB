@@ -325,9 +325,14 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
   }
   /*drop all the relevant index*/
   auto tableName_index = index_names_.find(table_name);
+
+  vector<string> index_names;
   for (auto it = (tableName_index->second).begin(); it != (tableName_index->second).end(); it++) {
-    /*it->first is the index name*/
-    DropIndex(table_name, it->first);
+    /*save all the indexes to be deleted*/
+    index_names.push_back(it->first);
+  }
+  for (auto it = index_names.begin(); it != index_names.end(); it++) {
+    DropIndex(table_name, *it);
   }
   /*drop the table，use table_heap */
   auto table_id = table_names_.find(table_name)->second;

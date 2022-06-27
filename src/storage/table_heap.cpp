@@ -37,6 +37,7 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     }
     this_page->Init(page_Id, INVALID_PAGE_ID, nullptr, nullptr);
     this_page->SetNextPageId(first_page_id_);
+    buffer_pool_manager_->UnpinPage(first_page_id_, true);
     first_page_id_ = page_Id;
     if (!this_page->InsertTuple(row, schema_, txn, nullptr, nullptr)) {
       LOG(WARNING) << "Inserting a tuple to a new page fails" << std::endl;
