@@ -10,7 +10,9 @@
 
 ### 架构设计
 
+![structure](./structure.png)
 
+`Schema`记录了表的元信息，由多个`Column`组成。`Row`记录了数据信息，由多个`Field`组成。此外`TableHeap`提供迭代器和对外接口。
 
 ### 实现细节
 

@@ -10,7 +10,9 @@
 
 ### 架构设计
 
+![structure](./structure.png)
 
+​	`BPlusTreeIndex`提供了迭代器和接口供上层调用。`BPlusTreeIndex`自身维护一颗b+树以及索引信息。
 
 ### 实现细节
 

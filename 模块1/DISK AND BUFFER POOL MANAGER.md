@@ -12,7 +12,9 @@
 
 ### 架构设计
 
+<img src="./structure.png" alt="structure" style="zoom: 50%;" />
 
+`DiskManager`负责与硬盘进行文件交互，包括元数据信息和数据信息。`BufferPoolManager`和`DiskManager`使用逻辑页号进行交互，`DiskManager`隐藏了元数据信息。
 
 ### 实现细节
 
