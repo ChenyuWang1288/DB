@@ -408,4 +408,51 @@ private:
 
   
 
-​	
+#### TableIterator 类
+
+```cpp
+class TableIterator {
+
+public:
+  // you may define your own constructor based on your member variables
+  //explicit TableIterator();
+  TableIterator() = delete;
+  
+  explicit TableIterator(Row row, TablePage *table_page, TableHeap *table_heap, Transaction *txn);
+
+  explicit TableIterator(const TableIterator &other);
+  
+  ~TableIterator();
+
+  inline bool operator==(const TableIterator &itr) const { return row_.GetRowId() == itr.row_.GetRowId(); }
+
+  inline bool operator!=(const TableIterator &itr) const { return !(itr == (*this)); }
+
+  const Row &operator*();
+
+  Row *operator->();
+
+  TableIterator &operator++();
+
+  TableIterator operator++(int);
+
+private:
+  // add your own private member variables here
+  Row row_;
+  TablePage *cur_page_;
+  TableHeap *table_heap_;
+  Transaction *txn_;
+};
+```
+
+堆表的迭代器维护`row_`来保存所指向的记录内容，维护`cur_page_`当前数据页的指针。
+
+重要的成员函数：
+
+- `TableIterator &operator++();`
+
+流程图如下图所示：
+
+<img src="./iterator++.png" alt="iterator++" style="zoom:50%;" />
+
+使用重载`++`遍历所有堆表中的所有记录。迭代器的实现给上层模块提供了接口。
