@@ -221,7 +221,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 #endif
   TableInfo *Newtable_info = NULL;
   Transaction *txn = NULL;
-
+  bool HasPK = false;
   ast = ast->child_;
   string NewTableName = ast->val_;
   vector<Column *> NewColumns;
@@ -286,6 +286,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
         }
       } else if (ast->type_ == kNodeColumnList) {
         if (strcmp(ast->val_, "primary keys") == 0) {
+          HasPK = true;
           tmp = ast->child_;
           while (tmp != NULL) {
             if (tmp->type_ == kNodeIdentifier) {
@@ -333,13 +334,15 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
         // unique即建索引
       }
       // pk建索引
-      vector<Column> pkColumns = currenttable->GetPrimaryKey();
-      vector<string> pkString;
-      for (auto pkiter = pkColumns.begin(); pkiter != pkColumns.end(); pkiter++) {
-        pkString.push_back((*pkiter).GetName());
+      if (HasPK == true) {
+        vector<Column> pkColumns = currenttable->GetPrimaryKey();
+        vector<string> pkString;
+        for (auto pkiter = pkColumns.begin(); pkiter != pkColumns.end(); pkiter++) {
+          pkString.push_back((*pkiter).GetName());
+        }
+        Currentp->catalog_mgr_->CreateIndex(NewTableName, "primarykey", pkString, txn, index_info_pk);
+        return DB_SUCCESS;
       }
-      Currentp->catalog_mgr_->CreateIndex(NewTableName, "primarykey", pkString, txn, index_info_pk);
-      return DB_SUCCESS;
     }
     return DB_FAILED;
   }
@@ -674,6 +677,10 @@ CmpBool ExecuteEngine::TravelWithoutIndex(TableInfo *currenttable, TableIterator
         CmpBool returnvalue = now->CompareGreaterThanEquals(*pto);
         delete pto;
         return returnvalue;
+      } else if (strcmp(cmpoperator, "<>") == 0) {
+        CmpBool returnvalue = now->CompareNotEquals(*pto);
+        delete pto;
+        return returnvalue;
       }
     }
     cout << "Wrong column name!" << endl;
@@ -746,7 +753,7 @@ CmpBool ExecuteEngine::Travel(TableInfo *currenttable, TableIterator &tableit, p
           return now->CompareGreaterThan(*pto);
         } else if (strcmp(cmpoperator, "<") == 0) {
           return now->CompareLessThan(*pto);
-        } else if (strcmp(cmpoperator, "!=") == 0) {
+        } else if (strcmp(cmpoperator, "<>") == 0) {
           return now->CompareNotEquals(*pto);
         } else if (strcmp(cmpoperator, "<=") == 0) {
           return now->CompareLessThanEquals(*pto);
@@ -823,7 +830,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
           uint32_t fieldid;
           currenttable->GetSchema()->GetColumnIndex((*fielditer)->GetName(), fieldid);
 
-          std::cout << nowrow.GetField(fieldid)->GetData();
+          std::cout << nowrow.GetField(fieldid)->GetData() << " ";
         }
         std::cout << std::endl;
       }
