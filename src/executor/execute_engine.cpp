@@ -526,7 +526,7 @@ dberr_t ExecuteEngine::NewTravel(DBStorageEngine *Currentp, TableInfo *currentta
     string indexname;
     Currentp->catalog_mgr_->GetTableIndexes(currenttable->GetTableName(), nowindexes);
     for (auto m = nowindexes.begin(); m != nowindexes.end(); m++) {
-      if ((*m)->GetIndexName() == "primarykey") break;
+      if ((*m)->GetIndexName() == "primarykey") continue;
       if ((*m)->GetIndexKeySchema()->GetColumns().size() == 1) {
         if ((*m)->GetIndexKeySchema()->GetColumn(0)->GetName() == op1) {
           indexname = (*m)->GetIndexName();
@@ -1102,10 +1102,14 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
         currenttable->SetRootPageId();
         for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
           uint32_t keyindex;
-          currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName(),
-                                                    keyindex);
+          uint32_t i = 0;
           vector<Field> rowkeyfield;
-          rowkeyfield.push_back(*nowrow.GetField(keyindex));
+          for (i = 0; i < (*iterindexes)->GetIndexKeySchema()->GetColumnCount(); i++) {
+            currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(i)->GetName(),
+                                                      keyindex);
+            
+            rowkeyfield.push_back(*nowrow.GetField(keyindex));
+          }
           Row rowkey(rowkeyfield);
           if ((*iterindexes)->GetIndex()->RemoveEntry(rowkey, (*iterresult), txn) == DB_FAILED) return DB_FAILED;
         }
@@ -1323,10 +1327,13 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
         // 修改index
         for (auto iterindexes = indexes.begin(); iterindexes != indexes.end(); iterindexes++) {
           uint32_t keyindex;
-          currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName(),
-                                                    keyindex);
+          uint32_t i = 0;
           vector<Field> rowkeyfield;
-          rowkeyfield.push_back(*previous.GetField(keyindex));
+          for (i = 0; i < (*iterindexes)->GetIndexKeySchema()->GetColumnCount(); i++) {
+            currenttable->GetSchema()->GetColumnIndex((*iterindexes)->GetIndexKeySchema()->GetColumn(0)->GetName(),
+                                                      keyindex);
+            rowkeyfield.push_back(*previous.GetField(keyindex));
+          }
           Row rowkey(rowkeyfield);
           if ((*iterindexes)->GetIndex()->RemoveEntry(rowkey, previous.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
           if ((*iterindexes)->GetIndex()->InsertEntry(rowkey, previous.GetRowId(), txn) == DB_FAILED) return DB_FAILED;
